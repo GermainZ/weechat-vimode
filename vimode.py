@@ -17,13 +17,19 @@
 #
 
 #
+# Github repo: https://github.com/GermainZ/weechat-vimode
+
 # Description:
 # An attempt to add a vi-like mode to WeeChat, which provides some common vi
 # key bindings and commands, as well as normal/insert modes.
 #
 # Usage:
 # To switch to Normal mode, press Ctrl + Space. The Escape key can be used as
-# well, though it's a bit flaky and will conflict with set key bindings.
+# well. The Esc key will conflict with existing key bindings (e.g. Esc followed
+# by 'd' will be detected as meta-d) for WeeChat ≤ 0.4.3.
+# It works as expected for WeeChat ≥ 0.4.4. You can get the latest WeeChat from:
+# http://weechat.org/download/devel/
+#
 # You can use the 'mode_indicator' bar item to view the current mode.
 #
 # To switch back to Insert mode, you can use i/a/A (or cw/ce/...).
@@ -91,6 +97,7 @@
 #     version 0.2.1: fixes/refactoring
 #     version 0.3: separate operators from motions (= better handling,) added
 #                  yank operator, I/p. Other fixes and improvements.
+#                  The Escape key should work flawlessly on WeeChat ≥ 0.4.4.
 #
 
 import weechat
@@ -481,6 +488,27 @@ def is_printing(current, saved):
         return False
     return True
 
+def key_combo_default_cb(data, signal, signal_data):
+    """Eat the escape key if needed. Requires WeeChat ≥ 0.4.4.
+
+    The key_combo_default signal is sent when a valid key combo is pressed. For
+    example, alt-j12 will send the signal, any single character like 'a' will
+    too, but alt-j will send nothing (not a valid combo.)
+
+    This is why key_pressed_cb takes effect before this function when the Esc
+    key is pressed. Basically, what happens when the Esc key is pressed is:
+        * Esc pressed -> key_pressed_cb is called, and sets the mode to NORMAL.
+        * When the user presses another key (e.g. d,) WeeChat detects meta-d
+          which is mapped by default to /input delete_next_word.
+        * This callback eats that combo, so WeeChat doesn't execute the meta-d
+          mapping anymore, and normal mode behaves as expected."""
+    # TODO: Eventually drop support for WeeChat < 0.4.4, cleanup all the nasty
+    #       workaround that try to make Esc work for these versions, and use
+    #       this hook instead and achieve happiness.
+    if mode == "NORMAL" and signal_data.startswith("["):
+        return weechat.WEECHAT_RC_OK_EAT;
+    return weechat.WEECHAT_RC_OK
+
 def key_pressed_cb(data, signal, signal_data):
     """Handle key presses.
 
@@ -561,4 +589,5 @@ vi_cmd = weechat.bar_new("vi_cmd", "off", "0", "root", '', "bottom",
                          "vertical", "vertical", "0", "0", "default",
                          "default", "default", "0", "cmd_text")
 weechat.hook_signal("key_pressed", "key_pressed_cb", '')
+weechat.hook_signal("key_combo_default", "key_combo_default_cb", '')
 
