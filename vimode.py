@@ -16,94 +16,100 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-#
-# Github repo: https://github.com/GermainZ/weechat-vimode
-
-# Description:
-# An attempt to add a vi-like mode to WeeChat, which provides some common vi
-# key bindings and commands, as well as normal/insert modes.
-#
-# Usage:
-# To switch to Normal mode, press Ctrl + Space. The Escape key can be used as
-# well. The Esc key will conflict with existing key bindings (e.g. Esc followed
-# by 'd' will be detected as meta-d) for WeeChat ≤ 0.4.3.
-# It works as expected for WeeChat ≥ 0.4.4. You can get the latest WeeChat from:
-# http://weechat.org/download/devel/
-#
-# You can use the 'mode_indicator' bar item to view the current mode.
-#
-# To switch back to Insert mode, you can use i/a/A (or cw/ce/...).
-# To execute a command, simply precede it with a ':' while in normal mode,
-# for example: ":h" or ":s/foo/bar".
-#
-# Current key bindings:
-#   ### Input line:
-#     # Operators:
-#       d{motion}       Delete text that {motion} moves over.
-#       c{motion}       Delete {motion} text and start insert.
-#       y{motion}       Yank {motion} text to clipboard.
-#     # Motions:
-#       h               [count] characters to the left exclusive.
-#       l               [count] characters to the right exclusive.
-#       w               [count] words forward exclusive.
-#       b               [count] words backward.
-#       e               Forward to the end of word [count] inclusive.
-#       0               To the first character of the line.
-#       ^               To the first non-blank character of the line exclusive.
-#       $               To the end of the line exclusive.
-#     # Other:
-#       x               Delete [count] characters under and after the cursor.
-#       dd              Delete line.
-#       cc              Delete line and start insert.
-#       yy              Yank line.
-#       I               Insert text before the first non-blank in the line.
-#       p               Put the text from the clipboard after the cursor.
-#   ### Buffer:
-#       j               Scroll buffer up. *
-#       k               Scroll buffer down. *
-#       gg              Goto first line.
-#       G               Goto line [count], default last line. *
-#       /               Launch WeeChat search mode
-# Counts may not work as intended for key bindings marked with a '*' depending
-# on the value of weechat.look.scroll_amount.
-
-# TODO u W B r R % f F
-#               better search (/), add: n N ?
-# TODO (even later): .
-#
-# Current commands:
-# :h                 Help (/help)
-# :set               Set WeeChat config option (/set)
-# :q                 Closes current buffer (/close)
-# :qall              Exits WeeChat (/exit)
-# :w                 Saves settings (/save)
-# :s/pattern/repl
-# :s/pattern/repl/g  Search/Replace, supports regex (check docs for the Python
-#                    re module for more information). '&' in the replacement is
-#                    also substituted by the pattern. If the 'g' flag isn't
-#                    present, only the first match will be substituted.
-#                    Escapes are not interpreted for repl (e.g. '\&'), and '/'
-#                    isn't expected to be used/escaped anywhere in the command.
-#                    TODO: Improve this.
-# TODO: :! (probably using shell.py)
-#       :w <file> saves buffer's contents to file
-#       :r <file> puts file's content in input line/open in buffer?
-# TODO: Display matching commands with (basic) help, like Penta/Vimp do.
-#
-# History:
-#     version 0.1: initial release
-#     version 0.2: added esc to switch to normal mode, various key bindings and
-#                  commands.
-#     version 0.2.1: fixes/refactoring
-#     version 0.3: separate operators from motions (= better handling,) added
-#                  yank operator, I/p. Other fixes and improvements.
-#                  The Escape key should work flawlessly on WeeChat ≥ 0.4.4.
-#
-
 import weechat
 import re
 import time
 from subprocess import Popen, PIPE
+
+
+# Type '/vimode' in WeeChat to view this help formatted text.
+help_text = """
+Github repo: {url}https://github.com/GermainZ/weechat-vimode
+
+{header}Description:
+An attempt to add a vi-like mode to WeeChat, which provides some common vi \
+key bindings and commands, as well as normal/insert modes.
+
+{header}Usage:
+To switch to Normal mode, press Ctrl + Space. The Escape key can be used as \
+well. The Esc key will conflict with existing key bindings (e.g. Esc followed \
+by 'd' will be detected as meta-d) for WeeChat ≤ 0.4.3.
+It works as expected for WeeChat ≥ 0.4.4. You can get the latest WeeChat from \
+{url}http://weechat.org/download/devel/
+
+You can use the {bold}mode_indicator{reset} bar item to view the current mode.
+
+To switch back to Insert mode, you can use i/a/A (or the c operator.)
+To execute a command, simply precede it with a ':' while in normal mode, \
+for example: ":h" or ":s/foo/bar".
+
+{header}Current key bindings:
+{header2}Input line:
+{header3}Operators:
+d{com}{{motion}}{reset}   Delete text that {com}{{motion}}{reset} moves over.
+c{com}{{motion}}{reset}   Delete {com}{{motion}}{reset} text and start insert.
+y{com}{{motion}}{reset}   Yank {com}{{motion}}{reset} text to clipboard.
+{header3}Motions:
+h    {com}[count]{reset} characters to the left exclusive.
+l    {com}[count]{reset} characters to the right exclusive.
+w    {com}[count]{reset} words forward exclusive.
+b    {com}[count]{reset} words backward.
+e    Forward to the end of word {com}[count]{reset} inclusive.
+0    To the first character of the line.
+^    To the first non-blank character of the line exclusive.
+$    To the end of the line exclusive.
+{header3}Other:
+x    Delete {com}[count]{reset} characters under and after the cursor.
+dd   Delete line.
+cc   Delete line and start insert.
+yy   Yank line.
+I    Insert text before the first non-blank in the line.
+p    Put the text from the clipboard after the cursor.
+{header2}Buffer:
+j    Scroll buffer up. {note}
+k    Scroll buffer down. {note}
+gg   Goto first line.
+G    Goto line {com}[count]{reset}, default last line. {note}
+/    Launch WeeChat search mode
+{note} Counts may not work as intended, depending on the value of \
+weechat.look.scroll_amount.
+
+{todo} u W B r R % f F   ||   better search (/), add: n N ?
+{todo} .
+
+{header}Current commands:
+:h                  Help ({bold}/help{reset})
+:set                Set WeeChat config option ({bold}/set{reset})
+:q                  Closes current buffer ({bold}/close{reset})
+:qall               Exits WeeChat ({bold}/exit{reset})
+:w                  Saves settings ({bold}/save{reset})
+:s/pattern/repl
+:s/pattern/repl/g   Search/Replace {note}
+{note} Supports regex (check docs for the Python re module for more \
+information). '&' in the replacement is also substituted by the pattern. If \
+the 'g' flag isn't present, only the first match will be substituted. Escapes \
+are not interpreted for repl (e.g. '\&'), and '/' isn't expected to be used/\
+escaped anywhere in the command. {todo} Improve this.
+{todo} :! (probably using shell.py)
+{todo} :w <file> saves buffer's contents to file
+{todo} :r <file> puts file's content in input line/open in buffer?
+{todo} Display matching commands with (basic) help, like Penta \
+and Vimp do.
+
+{header}History:
+{header2}version 0.1:{reset}   initial release
+{header2}version 0.2:{reset}   added esc to switch to normal mode, various key \
+bindings and commands.
+{header2}version 0.2.1:{reset} fixes/refactoring
+{header2}version 0.3:{reset}   separate operators from motions and better \
+handling. Added yank operator, I/p. Other fixes and improvements. The Escape \
+key should work flawlessly on WeeChat ≥ 0.4.4.
+""".format(header=weechat.color("red"), header2=weechat.color("lightred"),
+           header3=weechat.color("brown"), url=weechat.color("cyan"),
+           todo="%sTODO:%s" % (weechat.color("blue"), weechat.color("reset")),
+           note="%s*%s" % (weechat.color("red"), weechat.color("reset")),
+           bold=weechat.color("bold"), reset=weechat.color("reset"),
+           com=weechat.color("green"))
 
 
 SCRIPT_NAME = "vimode"
@@ -578,9 +584,27 @@ def key_pressed_cb(data, signal, signal_data):
     weechat.bar_item_update("vi_buffer")
     return weechat.WEECHAT_RC_OK
 
+help_buf = None
+def help_closed_cb(data, buffer):
+    global help_buf
+    help_buf = None
+    return weechat.WEECHAT_RC_OK
+
+def help_cb(data, buffer, args):
+    global help_buf
+    if help_buf is None:
+        help_buf = weechat.buffer_new("vimode", '', '', "help_closed_cb", '')
+    buf_num = weechat.buffer_get_integer(help_buf, "number")
+    weechat.command('', "/buffer %s" % buf_num)
+    weechat.prnt(help_buf, help_text)
+    return weechat.WEECHAT_RC_OK
 
 weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
                  SCRIPT_DESC, '', '')
+version = weechat.info_get("version_number", '')
+if int(version) < 0x00040400:
+    weechat.prnt('', ("%svimode: please upgrade to WeeChat ≥ 0.4.4 to be able"
+            " to use the Esc key correctly." % weechat.color("red")))
 
 weechat.bar_item_new("mode_indicator", "mode_indicator_cb", '')
 weechat.bar_item_new("cmd_text", "cmd_text_cb", '')
@@ -591,3 +615,4 @@ vi_cmd = weechat.bar_new("vi_cmd", "off", "0", "root", '', "bottom",
 weechat.hook_signal("key_pressed", "key_pressed_cb", '')
 weechat.hook_signal("key_combo_default", "key_combo_default_cb", '')
 
+weechat.hook_command("vimode", "vimode help", '', '', '', "help_cb", '')
