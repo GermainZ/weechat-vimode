@@ -74,7 +74,7 @@ G    Goto line {com}[count]{reset}, default last line. {note}
 {note} Counts may not work as intended, depending on the value of \
 weechat.look.scroll_amount.
 
-{todo} u W B r R % f F   ||   better search (/), add: n N ?
+{todo} s ge ; , u W B r R % f F   ||   better search (/), add: n N ?
 {todo} .
 
 {header}Current commands:
@@ -207,7 +207,10 @@ def motion_l(input_line, cur):
 
 def motion_carret(input_line, cur):
     """Return the new position of the cursor after the '^' motion."""
-    pos = get_pos(input_line, r"\S", 0)
+    if input_line.startswith(' '):
+        pos = get_pos(input_line, r"\S", 0)
+    else:
+        pos = 0
     return pos, False
 
 def motion_dollar(input_line, cur):
@@ -494,6 +497,11 @@ def is_printing(current, saved):
         return False
     return True
 
+# TODO: Rewrite all the key handling without all the workarounds needed for
+#       WeeChat ≤ 0.4.3. One day.
+# Special keybindings that should still work even when in Normal mode.
+# These are the arrows keys and alt-<buffer number> key bindings.
+special_weechat_keys = [r"\[[A-D]", r"j?[0-99]"]
 def key_combo_default_cb(data, signal, signal_data):
     """Eat the escape key if needed. Requires WeeChat ≥ 0.4.4.
 
@@ -508,10 +516,11 @@ def key_combo_default_cb(data, signal, signal_data):
           which is mapped by default to /input delete_next_word.
         * This callback eats that combo, so WeeChat doesn't execute the meta-d
           mapping anymore, and normal mode behaves as expected."""
-    # TODO: Eventually drop support for WeeChat < 0.4.4, cleanup all the nasty
-    #       workaround that try to make Esc work for these versions, and use
-    #       this hook instead and achieve happiness.
+    # FIXME check F1-F12 keys?
     if mode == "NORMAL" and signal_data.startswith("["):
+        for key in special_weechat_keys:
+            if re.match(key, signal_data[2:]):
+                return weechat.WEECHAT_RC_OK
         return weechat.WEECHAT_RC_OK_EAT;
     return weechat.WEECHAT_RC_OK
 
