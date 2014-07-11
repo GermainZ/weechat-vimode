@@ -89,12 +89,13 @@ weechat.look.scroll_amount.
 :q                  Closes current buffer ({bold}/close{reset})
 :qall               Exits WeeChat ({bold}/exit{reset})
 :w                  Saves settings ({bold}/save{reset})
+:!{com}{{cmd}}{reset}             Execute shell command ({bold}/exec -buffer \
+shell{reset})
 :s/pattern/repl
 :s/pattern/repl/g   Search/Replace {note}
 {note} Supports regex (check docs for the Python re module for more \
 information). '&' in the replacement is also substituted by the pattern. If \
 the 'g' flag isn't present, only the first match will be substituted.
-{todo} :! (probably using shell.py)
 {todo} :w <file> saves buffer's contents to file
 {todo} :r <file> puts file's content in input line/open in buffer?
 {todo} Display matching commands with (basic) help, like Penta \
@@ -323,6 +324,9 @@ def exec_cmd(data, remaining_calls):
         buf = weechat.current_buffer()
         input_line = re.sub(pattern, repl, input_line, count)
         weechat.buffer_set(buf, "input", input_line)
+    # Shell command
+    elif data.startswith('!'):
+        weechat.command('', "/exec -buffer shell %s" % data[1:])
     # Check againt defined commands
     else:
         data = data.split(' ', 1)
@@ -607,6 +611,7 @@ def help_cb(data, buffer, args):
     global help_buf
     if help_buf is None:
         help_buf = weechat.buffer_new("vimode", '', '', "help_closed_cb", '')
+        weechat.command(help_buf, "/buffer set time_for_each_line 0")
     buf_num = weechat.buffer_get_integer(help_buf, "number")
     weechat.command('', "/buffer %s" % buf_num)
     weechat.prnt(help_buf, HELP_TEXT)
