@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*c
+# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2013 Germain Z. <germanosz@gmail.com>
 #
@@ -68,13 +68,17 @@ p    Put the text from the clipboard after the cursor.
 {header2}Buffer:
 j    Scroll buffer up. {note}
 k    Scroll buffer down. {note}
+gt   Go to the next buffer.
+     (or K)
+gT   Go to the previous buffer.
+     (or J)
 gg   Goto first line.
 G    Goto line {com}[count]{reset}, default last line. {note}
 /    Launch WeeChat search mode
 {note} Counts may not work as intended, depending on the value of \
 weechat.look.scroll_amount.
 
-{todo} s ge ; , u W B r R % f F   ||   better search (/), add: n N ?
+{todo} u W B r R % f F   ||   better search (/), add: n N ?
 {todo} .
 
 {header}Current commands:
@@ -207,10 +211,7 @@ def motion_l(input_line, cur):
 
 def motion_carret(input_line, cur):
     """Return the new position of the cursor after the '^' motion."""
-    if input_line.startswith(' '):
-        pos = get_pos(input_line, r"\S", 0)
-    else:
-        pos = 0
+    pos = get_pos(input_line, r"\S", 0)
     return pos, False
 
 def motion_dollar(input_line, cur):
@@ -257,7 +258,11 @@ vi_keys = {'j': "/window scroll_down",
            'yy': key_yy,
            'p': "/input clipboard_paste",
            '0': "/input move_beginning_of_line",
-           '/': "/input search_text"}
+           '/': "/input search_text",
+           'gt': "/buffer +1",
+           'K': "/buffer +1",
+           'gT': "/buffer -1",
+           'J': "/buffer -1"}
 # Vi operators. Each operator must have a corresponding function,
 # called "operator_X" where X is the operator. For example: "operator_c"
 vi_operators = ['c', 'd', 'y']
@@ -497,11 +502,6 @@ def is_printing(current, saved):
         return False
     return True
 
-# TODO: Rewrite all the key handling without all the workarounds needed for
-#       WeeChat ≤ 0.4.3. One day.
-# Special keybindings that should still work even when in Normal mode.
-# These are the arrows keys and alt-<buffer number> key bindings.
-special_weechat_keys = [r"\[[A-D]", r"j?[0-99]"]
 def key_combo_default_cb(data, signal, signal_data):
     """Eat the escape key if needed. Requires WeeChat ≥ 0.4.4.
 
@@ -516,11 +516,10 @@ def key_combo_default_cb(data, signal, signal_data):
           which is mapped by default to /input delete_next_word.
         * This callback eats that combo, so WeeChat doesn't execute the meta-d
           mapping anymore, and normal mode behaves as expected."""
-    # FIXME check F1-F12 keys?
+    # TODO: Eventually drop support for WeeChat < 0.4.4, cleanup all the nasty
+    #       workaround that try to make Esc work for these versions, and use
+    #       this hook instead and achieve happiness.
     if mode == "NORMAL" and signal_data.startswith("["):
-        for key in special_weechat_keys:
-            if re.match(key, signal_data[2:]):
-                return weechat.WEECHAT_RC_OK
         return weechat.WEECHAT_RC_OK_EAT;
     return weechat.WEECHAT_RC_OK
 
