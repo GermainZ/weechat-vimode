@@ -20,6 +20,8 @@ import weechat
 import re
 import time
 from subprocess import Popen, PIPE
+from StringIO import StringIO
+from csv import reader
 
 
 # Type '/vimode' in WeeChat to view this help formatted text.
@@ -91,9 +93,7 @@ weechat.look.scroll_amount.
 :s/pattern/repl/g   Search/Replace {note}
 {note} Supports regex (check docs for the Python re module for more \
 information). '&' in the replacement is also substituted by the pattern. If \
-the 'g' flag isn't present, only the first match will be substituted. Escapes \
-are not interpreted for repl (e.g. '\&'), and '/' isn't expected to be used/\
-escaped anywhere in the command. {todo} Improve this.
+the 'g' flag isn't present, only the first match will be substituted.
 {todo} :! (probably using shell.py)
 {todo} :w <file> saves buffer's contents to file
 {todo} :r <file> puts file's content in input line/open in buffer?
@@ -306,29 +306,34 @@ def exec_cmd(data, remaining_calls):
     data = list(data)
     del data[0]
     data = ''.join(data)
-    data = data.split(' ', 1)
-    cmd = data[0]
-    if len(data) == 2:
-        args = data[1]
-    else:
-        args = ''
-    if cmd in vi_commands:
-        weechat.command('', "%s %s" % (vi_commands[cmd], args))
     # s/foo/bar command
-    elif cmd.startswith("s/"):
-        pattern = cmd.split('/')[1]
-        repl = cmd.split('/')[2].replace('&', pattern)
+    if data.startswith("s/"):
+        cmd = data
+        parsed_cmd = next(reader(StringIO(cmd), delimiter='/',
+                                 escapechar='\\'));
+        pattern = re.escape(parsed_cmd[1])
+        repl = parsed_cmd[2]
+        repl = re.sub(r'([^\\])&', r'\1' + pattern, repl)
         flag = None
+        if len(parsed_cmd) == 4:
+            flag = parsed_cmd[3]
         count = 1
-        if len(cmd.split('/')) > 3:
-            flag = cmd.split('/')[3]
         if flag == 'g':
             count = 0
         buf = weechat.current_buffer()
         input_line = re.sub(pattern, repl, input_line, count)
         weechat.buffer_set(buf, "input", input_line)
+    # Check againt defined commands
     else:
-        weechat.prnt('', "Command '%s' not found." % cmd)
+        data = data.split(' ', 1)
+        cmd = data[0]
+        args = ''
+        if len(data) == 2:
+            args = data[1]
+        if cmd in vi_commands:
+            weechat.command('', "%s %s" % (vi_commands[cmd], args))
+        else:
+            weechat.prnt('', "Command '%s' not found." % cmd)
     return weechat.WEECHAT_RC_OK
 
 def input_set(data, remaining_calls):
