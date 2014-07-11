@@ -25,7 +25,7 @@ from csv import reader
 
 
 # Type '/vimode' in WeeChat to view this help formatted text.
-help_text = """
+HELP_TEXT = """
 Github repo: {url}https://github.com/GermainZ/weechat-vimode
 
 {header}Description:
@@ -609,7 +609,7 @@ def help_cb(data, buffer, args):
         help_buf = weechat.buffer_new("vimode", '', '', "help_closed_cb", '')
     buf_num = weechat.buffer_get_integer(help_buf, "number")
     weechat.command('', "/buffer %s" % buf_num)
-    weechat.prnt(help_buf, help_text)
+    weechat.prnt(help_buf, HELP_TEXT)
     return weechat.WEECHAT_RC_OK
 
 weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
