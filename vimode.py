@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013 Germain Z. <germanosz@gmail.com>
+# Copyright (C) 2013-2014 Germain Z. <germanosz@gmail.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 SCRIPT_NAME = "vimode"
 SCRIPT_AUTHOR = "GermainZ <germanosz@gmail.com>"
-SCRIPT_VERSION = "0.3"
+SCRIPT_VERSION = "0.4"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC = ("An attempt to add a vi-like mode to WeeChat, which adds some"
                " common vi key bindings and commands, as well as normal/insert"
@@ -128,6 +128,9 @@ bindings and commands.
 {header2}version 0.3:{reset}   separate operators from motions and better \
 handling. Added yank operator, I/p. Other fixes and improvements. The Escape \
 key should work flawlessly on WeeChat ≥ 0.4.4.
+{header2}version 0.4:{reset}   added: f, F, r, R, W, E, B, gt, gT, J, K, \
+:!cmd. Improved substitutions (:s/foo/bar). Other fixes and improvements. \
+WeeChat ≥ 1.0.0 required.
 """.format(header=weechat.color("red"), header2=weechat.color("lightred"),
            header3=weechat.color("brown"), url=weechat.color("cyan"),
            todo="%sTODO:%s" % (weechat.color("blue"), weechat.color("reset")),
