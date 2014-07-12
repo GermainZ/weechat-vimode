@@ -64,8 +64,11 @@ y{com}{{motion}}{reset}   Yank {com}{{motion}}{reset} text to clipboard.
 h    {com}[count]{reset} characters to the left exclusive.
 l    {com}[count]{reset} characters to the right exclusive.
 w    {com}[count]{reset} words forward exclusive.
+W    {com}[count]{reset} WORDS forward exclusive.
 b    {com}[count]{reset} words backward.
+B    {com}[count]{reset} WORDS backward.
 e    Forward to the end of word {com}[count]{reset} inclusive.
+E    Forward to the end of WORD {com}[count]{reset} inclusive.
 0    To the first character of the line.
 ^    To the first non-blank character of the line exclusive.
 $    To the end of the line exclusive.
@@ -89,7 +92,7 @@ G    Goto line {com}[count]{reset}, default last line. {note}
 {note} Counts may not work as intended, depending on the value of \
 weechat.look.scroll_amount.
 
-{todo} u W B r R % f F   ||   better search (/), add: n N ?
+{todo} u r R % f F   ||   better search (/), add: n N ?
 {todo} .
 
 {header}Current commands:
@@ -148,19 +151,29 @@ SPECIAL_KEYS = [r"\[1;3[A-D]", r"j?[0-99]", r"\[[A-D]"]
 VI_COMMANDS = {'h': "/help", 'qall': "/exit", 'q': "/close", 'w': "/save",
                'set': "/set"}
 
-def get_pos(data, regex, cur):
-    """Get the position of the first match in data, starting at cur."""
-    matches = [m.start() for m in re.finditer(regex, data[cur+1:])]
-    if len(matches) > 1 and matches[0] == 0:
-        pos = matches[1] + 1
-    elif len(matches) > 0 and matches[0] != 0:
-        pos = matches[0] + 1
+def get_pos(data, regex, cur, ignore_zero=False):
+    """Get the position of the first match in data, starting at cur.
+
+    If ignore_zero is True, the first match will be ignored if it's the first
+    character in data.
+
+    """
+    matches = [m.start() for m in re.finditer(regex, data[cur:])]
+    if len(matches) > 0:
+        if ignore_zero and matches[0] == 0:
+            if len(matches) > 1:
+                pos = matches[1] + 1
+            else:
+                pos = len(data)
+        else:
+            pos = matches[0] + 1
     else:
         pos = len(data)
-    return pos
+    return pos-1
 
-def set_cur(buf, pos):
+def set_cur(buf, input_line, pos):
     """Set the cursor's position."""
+    pos = min(pos, len(input_line) - 1)
     weechat.buffer_set(buf, "input_pos", str(pos))
 
 def operator_d(buf, input_line, pos1, pos2, overwrite=False):
@@ -192,18 +205,35 @@ def operator_y(buf, input_line, pos1, pos2, overwrite=False):
 
 def motion_w(input_line, cur):
     """Return the new position of the cursor after the 'w' motion."""
-    pos = get_pos(input_line, r"\b\w", cur)
+    pos = get_pos(input_line, r"\b\w|[^\w ]", cur, True)
+    return cur+pos, False
+
+def motion_W(input_line, cur):
+    """Return the new position of the cursor after the 'W' motion."""
+    pos = get_pos(input_line, r"(?<!\S)\b\w", cur, True)
     return cur+pos, False
 
 def motion_e(input_line, cur):
     """Return the new position of the cursor after the 'e' motion."""
-    pos = get_pos(input_line, r"\w\b", cur)
+    pos = get_pos(input_line, r"\w\b|[^\w ]", cur, True)
+    return cur+pos, True
+
+def motion_E(input_line, cur):
+    """Return the new position of the cursor after the 'E' motion."""
+    pos = get_pos(input_line, r"\S(?!\S)", cur, True)
     return cur+pos, True
 
 def motion_b(input_line, cur):
     """Return the new position of the cursor after the 'b' motion."""
     new_cur = len(input_line) - cur
-    pos = get_pos(input_line[::-1], r"\w\b", new_cur)
+    pos = get_pos(input_line[::-1], r"\w\b|[^\w ]", new_cur)
+    pos = len(input_line) - (pos + new_cur + 1)
+    return pos, True
+
+def motion_B(input_line, cur):
+    """Return the new position of the cursor after the 'B' motion."""
+    new_cur = len(input_line) - cur
+    pos = get_pos(input_line[::-1], r"\w\b(?!\S)", new_cur)
     pos = len(input_line) - (pos + new_cur + 1)
     return pos, True
 
@@ -239,7 +269,7 @@ def key_yy(buf, input_line, cur, repeat):
 def key_I(buf, input_line, cur, repeat):
     """Simulate vi's behavior for I."""
     pos, _ = motion_carret(input_line, cur)
-    set_cur(buf, pos)
+    set_cur(buf, input_line, pos)
     set_mode("INSERT")
 
 def key_G(buf, input_line, cur, repeat):
@@ -275,7 +305,7 @@ VI_KEYS = {'j': "/window scroll_down",
 VI_OPERATORS = ['c', 'd', 'y']
 # Vi motions. Each motion must have a corresponding function, called "motion_X"
 # where X is the motion.
-VI_MOTIONS = ['w', 'e', 'b', '^', '$', 'h', 'l', '0']
+VI_MOTIONS = ['w', 'e', 'b', '^', '$', 'h', 'l', '0', 'W', 'E', 'B']
 # Special characters for motions. The corresponding function's name is converted
 # before calling. For example, '^' will call 'motion_carret' instead of
 # 'motion_^' (which isn't allowed because of illegal characters.)
@@ -374,6 +404,9 @@ def cb_pressed_keys_check(data, remaining_calls):
 
     """
     global esc_pressed
+    buf = weechat.current_buffer()
+    input_line = weechat.buffer_get_string(buf, 'input')
+    cur = weechat.buffer_get_integer(buf, "input_pos")
     # If the last pressed key was Escape, this one will be detected as an arg
     # as Escape acts like a modifier (pressing Esc, then pressing i is detected
     # as pressing meta-i). We'll emulate it being pressed again, so that the
@@ -385,6 +418,7 @@ def cb_pressed_keys_check(data, remaining_calls):
         # Ctrl + Space, or Escape
         if pressed_keys == "@" or pressed_keys == "[":
             set_mode("NORMAL")
+            set_cur(buf, input_line, cur)
             if pressed_keys == "[":
                 esc_pressed = True
     elif mode == "NORMAL":
@@ -410,9 +444,6 @@ def cb_pressed_keys_check(data, remaining_calls):
                 repeat = min([int(repeat), 10000])
             else:
                 repeat = 0
-            buf = weechat.current_buffer()
-            input_line = weechat.buffer_get_string(buf, 'input')
-            cur = weechat.buffer_get_integer(buf, "input_pos")
             # First, the key combo is checked against the VI_KEYS dict which
             # can contain WeeChat commands (as strings) or Python functions.
             if buffer_stripped in VI_KEYS:
@@ -433,7 +464,7 @@ def cb_pressed_keys_check(data, remaining_calls):
                     else:
                         func = "motion_%s" % buffer_stripped[0]
                     end, _ = globals()[func](input_line, cur)
-                    set_cur(buf, end)
+                    set_cur(buf, input_line, end)
             # And finally, if it's an operator + motion (e.g. 'dw')
             # If it is, we call the function "motion_X" where X is the motion,
             # then we call the function "operator_Y" where Y is the operator,
