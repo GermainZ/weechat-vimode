@@ -374,13 +374,13 @@ def input_rem_char(data, remaining_calls):
     return weechat.WEECHAT_RC_OK
 
 def handle_esc(data, remaining_calls):
-    """Esc acts as a modifier and usually waits for another keypress.
+    """Send key press signal so it gets picked in key_pressed_cb.
 
-    To circumvent that, simulate a keypress then remove what was inserted.
+    Esc acts as a modifier and usually waits for another keypress, but we're
+    already eating that in key_combo_default_cb.
 
     """
     global cmd_text
-    weechat.command('', "/input insert %s" % data)
     weechat.hook_signal_send("key_pressed", weechat.WEECHAT_HOOK_SIGNAL_STRING,
                             data)
     if cmd_text == ":[":
@@ -525,10 +525,8 @@ def key_combo_default_cb(data, signal, signal_data):
           which is mapped by default to /input delete_next_word.
         * This callback eats that combo, so WeeChat doesn't execute the meta-d
           mapping anymore, and normal mode behaves as expected."""
-    # TODO: Eventually drop support for WeeChat < 0.4.4, cleanup all the nasty
-    #       workaround that try to make Esc work for these versions, and use
-    #       this hook instead and achieve happiness.
-    if mode == "NORMAL" and signal_data.startswith("["):
+    if mode == "NORMAL" and (signal_data.startswith("[") or
+                             is_printing(signal_data, pressed_keys)):
         return weechat.WEECHAT_RC_OK_EAT;
     return weechat.WEECHAT_RC_OK
 
@@ -542,10 +540,6 @@ def key_pressed_cb(data, signal, signal_data):
     """
     global pressed_keys, last_time, cmd_text, input_line, vi_buffer
     if mode == "NORMAL":
-        # The character is a printing character, so we'll want to remove it
-        # so it doesn't add up to the normal input box.
-        if is_printing(signal_data, pressed_keys):
-            weechat.hook_timer(1, 0, 1, "input_rem_char", "cursor")
         # It's a command!
         if signal_data == ':':
             cmd_text += ':'
@@ -620,9 +614,9 @@ def help_cb(data, buffer, args):
 weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
                  SCRIPT_DESC, '', '')
 version = weechat.info_get("version_number", '')
-if int(version) < 0x00040400:
-    weechat.prnt('', ("%svimode: please upgrade to WeeChat ≥ 0.4.4 to be able"
-            " to use the Esc key correctly." % weechat.color("red")))
+if int(version) < 0x01000000:
+    weechat.prnt('', ("%svimode: please upgrade to WeeChat ≥ 1.0.0. Previous"
+            " versions are not supported." % weechat.color("red")))
 
 weechat.bar_item_new("mode_indicator", "mode_indicator_cb", '')
 weechat.bar_item_new("cmd_text", "cmd_text_cb", '')
