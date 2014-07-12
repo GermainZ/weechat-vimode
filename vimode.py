@@ -73,12 +73,19 @@ E    Forward to the end of WORD {com}[count]{reset} inclusive.
 ^    To the first non-blank character of the line exclusive.
 $    To the end of the line exclusive.
 {header3}Other:
-x    Delete {com}[count]{reset} characters under and after the cursor.
-dd   Delete line.
-cc   Delete line and start insert.
-yy   Yank line.
-I    Insert text before the first non-blank in the line.
-p    Put the text from the clipboard after the cursor.
+x           Delete {com}[count]{reset} characters under and after the cursor.
+r{com}{{count}}{reset}    Replace {com}[count]{reset} characters with \
+{com}{{count}}{reset} under and after the cursor.
+R           Enter Replace mode. Counts are not supported.
+f{com}{{char}}{reset}     To {com}[count]{reset}'th occurence of \
+{com}{{char}}{reset} to the right.
+F{com}{{char}}{reset}     To {com}[count]{reset}'th occurence of \
+{com}{{char}}{reset} to the left.
+dd          Delete line.
+cc          Delete line and start insert.
+yy          Yank line.
+I           Insert text before the first non-blank in the line.
+p           Put the text from the clipboard after the cursor.
 {header2}Buffer:
 j    Scroll buffer up. {note}
 k    Scroll buffer down. {note}
@@ -92,7 +99,7 @@ G    Goto line {com}[count]{reset}, default last line. {note}
 {note} Counts may not work as intended, depending on the value of \
 weechat.look.scroll_amount.
 
-{todo} u r R % f F   ||   better search (/), add: n N ?
+{todo} u %   ||   better search (/), add: n N ?
 {todo} .
 
 {header}Current commands:
@@ -132,7 +139,7 @@ key should work flawlessly on WeeChat ≥ 0.4.4.
 input_line = '' # used to communicate between functions, when only passing a
                 # single string is allowed (e.g. for weechat.hook_timer).
 cmd_text = '' # holds the text of the command line.
-mode = "INSERT" # mode we start in (INSERT or COMMAND), insert by default.
+mode = "INSERT" # mode we start in (INSERT, COMMAND or REPLACE)
 pressed_keys = '' # holds any pressed keys, regardless of their type.
 vi_buffer = '' # holds 'printable' pressed keys (e.g. arrow keys aren't added).
 last_time = time.time() # used to check if pressed_keys and vi_buffer need to
@@ -141,6 +148,9 @@ NUM = r"[0-9]*" # simple regex to detect number of repeats in keystrokes such
                 # as "d2w"
 esc_pressed = False # determines if the pressed last key is Esc
 help_buf = None # buffer used to show help message (/vimode)
+
+# See start_catching_keys(catching_data)
+catching_keys_data = {'amount': 0}
 
 # Special keys that should be allowed while in normal mode: arrows,
 # meta-j<number>, meta-<number>, and meta-<arrow>
@@ -151,7 +161,7 @@ SPECIAL_KEYS = [r"\[1;3[A-D]", r"j?[0-99]", r"\[[A-D]"]
 VI_COMMANDS = {'h': "/help", 'qall': "/exit", 'q': "/close", 'w': "/save",
                'set': "/set"}
 
-def get_pos(data, regex, cur, ignore_zero=False):
+def get_pos(data, regex, cur, ignore_zero=False, count=0):
     """Get the position of the first match in data, starting at cur.
 
     If ignore_zero is True, the first match will be ignored if it's the first
@@ -159,22 +169,45 @@ def get_pos(data, regex, cur, ignore_zero=False):
 
     """
     matches = [m.start() for m in re.finditer(regex, data[cur:])]
-    if len(matches) > 0:
+    if count > 0:
+        if len(matches) > count-1:
+            pos = matches[count-1]
+        else:
+            pos = 0
+    elif len(matches) > 0:
         if ignore_zero and matches[0] == 0:
             if len(matches) > 1:
-                pos = matches[1] + 1
+                pos = matches[1]
             else:
                 pos = len(data)
         else:
-            pos = matches[0] + 1
+            pos = matches[0]
     else:
-        pos = len(data)
-    return pos-1
+        pos = 0
+    return pos
 
 def set_cur(buf, input_line, pos):
     """Set the cursor's position."""
     pos = min(pos, len(input_line) - 1)
     weechat.buffer_set(buf, "input_pos", str(pos))
+
+def start_catching_keys(catching_data):
+    """Start catching keys. Used for special commands (e.g. 'f', 'r').
+
+    catching_data is a dict with the following entries:
+        * amount: amount of keys to catch
+        * callback: method to call once all keys are caught
+        * buf: buffer
+        * input_line: input line's content
+        * cur: cursor's position
+        * keys: pressed keys will be added under this key
+
+    When catching keys is active, all printing characters will get added to
+    catching_keys_data['keys'] and will not be handled any further.
+
+    """
+    global catching_keys_data
+    catching_keys_data = catching_data
 
 def operator_d(buf, input_line, pos1, pos2, overwrite=False):
     """Simulate the behavior of the 'd' operator. Remove everything between two
@@ -281,6 +314,58 @@ def key_G(buf, input_line, cur, repeat):
     else:
         weechat.command('', "/window scroll_bottom")
 
+def key_f(buf, input_line, cur, repeat):
+    """"Simulate vi's behavior for the f key."""
+    start_catching_keys({'amount': 1, 'callback': "cb_key_f", 'buf': buf,
+                         'input_line': input_line, 'cur': cur,
+                         'count': repeat, 'keys': ''})
+
+def cb_key_f(cb_data):
+    """Callback for key_f."""
+    pattern = cb_data['keys'][0]
+    count = cb_data['count']
+    pos = get_pos(cb_data['input_line'], pattern, cb_data['cur'], count=count)
+    set_cur(cb_data['buf'], cb_data['input_line'], pos + cb_data['cur'])
+
+def key_F(buf, input_line, cur, repeat):
+    """"Simulate vi's behavior for the F key."""
+    start_catching_keys({'amount': 1, 'callback': "cb_key_F", 'buf': buf,
+                         'input_line': input_line, 'cur': cur,
+                         'count': repeat, 'keys': ''})
+
+def cb_key_F(cb_data):
+    """Callback for key_F."""
+    pattern = cb_data['keys'][0]
+    count = cb_data['count']
+    pos = get_pos(cb_data['input_line'][::-1], pattern,
+                  len(cb_data['input_line']) - (cb_data['cur'] + 1),
+                  count=count)
+    set_cur(cb_data['buf'], cb_data['input_line'], cb_data['cur'] - pos)
+
+def key_r(buf, input_line, cur, repeat):
+    """"Simulate vi's behavior for the r key."""
+    start_catching_keys({'amount': 1, 'callback': "cb_key_r", 'buf': buf,
+                         'input_line': input_line, 'cur': cur,
+                         'count': repeat, 'keys': ''})
+
+def cb_key_r(cb_data):
+    """Callback for key_r."""
+    input_line = list(cb_data['input_line'])
+    count = cb_data['count']
+    if count > len(input_line):
+        return
+    cur = cb_data['cur']
+    for _ in range(max(1, count)):
+        input_line[cur] = cb_data['keys'][0]
+        cur += 1
+    input_line = ''.join(input_line)
+    weechat.buffer_set(cb_data['buf'], "input", input_line)
+    set_cur(cb_data['buf'], input_line, cur-1)
+
+def key_R(buf, input_line, cur, repeat):
+    """Simulate vi's behavior for the R key."""
+    set_mode("REPLACE")
+
 # Common vi key bindings. If the value is a string, it's assumed it's a WeeChat
 # command, and a function otherwise.
 VI_KEYS = {'j': "/window scroll_down",
@@ -298,7 +383,11 @@ VI_KEYS = {'j': "/window scroll_down",
            'gt': "/buffer +1",
            'K': "/buffer +1",
            'gT': "/buffer -1",
-           'J': "/buffer -1"}
+           'J': "/buffer -1",
+           'f': key_f,
+           'F': key_F,
+           'r': key_r,
+           'R': key_R}
 
 # Vi operators. Each operator must have a corresponding function,
 # called "operator_X" where X is the operator. For example: "operator_c"
@@ -414,7 +503,7 @@ def cb_pressed_keys_check(data, remaining_calls):
     if esc_pressed is True:
         esc_pressed = False
         weechat.hook_timer(50, 0, 1, "cb_handle_esc", pressed_keys[-1])
-    if mode == "INSERT":
+    if mode == "INSERT" or mode == "REPLACE":
         # Ctrl + Space, or Escape
         if pressed_keys == "@" or pressed_keys == "[":
             set_mode("NORMAL")
@@ -500,6 +589,8 @@ def cb_clear_vi_buffers(data=None, remaining_calls=None):
 
     """
     global pressed_keys, vi_buffer
+    if catching_keys_data['amount'] > 0:
+        return weechat.WEECHAT_RC_OK
     if data == "check_time" and time.time() < last_time + 1.0:
         return weechat.WEECHAT_RC_OK
     pressed_keys = ''
@@ -540,14 +631,23 @@ def cb_key_combo_default(data, signal, signal_data):
     unless they're considered special (see SPECIAL_KEYS).
 
     """
-    if mode != "NORMAL":
-        return weechat.WEECHAT_RC_OK
-    if signal_data.startswith("[") or is_printing(signal_data, pressed_keys):
-        for key in SPECIAL_KEYS:
-            if re.match(key, signal_data[2:]):
-                return weechat.WEECHAT_RC_OK
-        return weechat.WEECHAT_RC_OK_EAT
-    elif signal_data == "?":
+    global catching_keys_data
+    if mode == "NORMAL":
+        if signal_data.startswith("["):
+            for key in SPECIAL_KEYS:
+                if re.match(key, signal_data[2:]):
+                    return weechat.WEECHAT_RC_OK
+            return weechat.WEECHAT_RC_OK_EAT
+        elif is_printing(signal_data, pressed_keys):
+            if catching_keys_data['amount'] > 0:
+                catching_keys_data['keys'] += signal_data
+                catching_keys_data['amount'] -= 1
+                if catching_keys_data['amount'] == 0:
+                    globals()[catching_keys_data['callback']](catching_keys_data)
+                    cb_clear_vi_buffers()
+            return weechat.WEECHAT_RC_OK_EAT
+    # Backspace
+    elif mode != "INSERT" and signal_data == "?":
         weechat.command('', "/input move_previous_char")
         return weechat.WEECHAT_RC_OK_EAT
     else:
@@ -600,6 +700,9 @@ def cb_key_pressed(data, signal, signal_data):
             # The key is a normal key, so just append it to our command line.
             elif is_printing(signal_data, pressed_keys):
                 cmd_text += signal_data
+    elif mode == "REPLACE":
+        if is_printing(signal_data, pressed_keys):
+            weechat.command('', "/input delete_next_char")
     # Show the command line when needed, hide it (and update vi_buffer since
     # we'd be looking for keystrokes instead) otherwise.
     if cmd_text != '':
