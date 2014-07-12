@@ -139,6 +139,10 @@ NUM = r"[0-9]*" # simple regex to detect number of repeats in keystrokes such
 esc_pressed = False # determines if the pressed last key is Esc
 help_buf = None # buffer used to show help message (/vimode)
 
+# Special keys that should be allowed while in normal mode: arrows,
+# meta-j<number>, meta-<number>, and meta-<arrow>
+SPECIAL_KEYS = [r"\[1;3[A-D]", r"j?[0-99]", r"\[[A-D]"]
+
 # Some common vi commands.
 # Others may be present in cb_exec_cmd:
 VI_COMMANDS = {'h': "/help", 'qall': "/exit", 'q': "/close", 'w': "/save",
@@ -488,23 +492,35 @@ def is_printing(current, saved):
     return True
 
 def cb_key_combo_default(data, signal, signal_data):
-    """Eat the escape key if needed. Requires WeeChat ≥ 0.4.4.
+    """Eat and handle key events when in normal mode, if needed.
 
     The key_combo_default signal is sent when a valid key combo is pressed. For
     example, alt-j12 will send the signal, any single character like 'a' will
-    too, but alt-j will send nothing (not a valid combo.)
+    too, but alt-j will send nothing until the combo is complete.
 
-    This is why cb_key_pressed takes effect before this function when the Esc
-    key is pressed. Basically, what happens when the Esc key is pressed is:
-        * Esc pressed -> cb_key_pressed is called, and sets the mode to NORMAL.
-        * When the user presses another key (e.g. d,) WeeChat detects meta-d
+    When the Esc key is pressed, the following happens:
+        * Esc pressed -> key_pressed_cb is called, and sets the mode to NORMAL.
+        * When the user presses another key (e.g. d), WeeChat detects meta-d
           which is mapped by default to /input delete_next_word.
         * This callback eats that combo, so WeeChat doesn't execute the meta-d
-          mapping anymore, and normal mode behaves as expected."""
-    if mode == "NORMAL" and (signal_data.startswith("[") or
-                             is_printing(signal_data, pressed_keys)):
+          mapping anymore, and normal mode behaves as expected.
+
+    When in Normal mode, printing keys are eaten directly (see is_printing(…)),
+    unless they're considered special (see SPECIAL_KEYS).
+
+    """
+    if mode != "NORMAL":
+        return weechat.WEECHAT_RC_OK
+    if signal_data.startswith("[") or is_printing(signal_data, pressed_keys):
+        for key in SPECIAL_KEYS:
+            if re.match(key, signal_data[2:]):
+                return weechat.WEECHAT_RC_OK
         return weechat.WEECHAT_RC_OK_EAT
-    return weechat.WEECHAT_RC_OK
+    elif signal_data == "?":
+        weechat.command('', "/input move_previous_char")
+        return weechat.WEECHAT_RC_OK_EAT
+    else:
+        return weechat.WEECHAT_RC_OK
 
 def cb_key_pressed(data, signal, signal_data):
     """Handle key presses.
