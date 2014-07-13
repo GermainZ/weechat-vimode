@@ -194,23 +194,34 @@ def set_cur(buf, input_line, pos):
     pos = min(pos, len(input_line) - 1)
     weechat.buffer_set(buf, "input_pos", str(pos))
 
-def start_catching_keys(catching_data):
+def start_catching_keys(amount, callback, input_line, cur, count, buf=None):
     """Start catching keys. Used for special commands (e.g. 'f', 'r').
 
-    catching_data is a dict with the following entries:
+    catching_keys_data is a dict with the following entries:
         * amount: amount of keys to catch
         * callback: method to call once all keys are caught
-        * buf: buffer
-        * input_line: input line's content
         * cur: cursor's position
+        * count: {count}, e.g. '2' for '2fs'
+        * input_line: input line's content
         * keys: pressed keys will be added under this key
+        * new_cur: set in the callback
 
     When catching keys is active, all printing characters will get added to
     catching_keys_data['keys'] and will not be handled any further.
+    Once all keys are caught, catching_keys_data['callback'] is called.
 
     """
     global catching_keys_data
-    catching_keys_data = catching_data
+    if 'new_cur' in catching_keys_data:
+        new_cur = catching_keys_data['new_cur']
+        catching_keys_data = {'amount': 0}
+        return new_cur, True
+    catching_keys_data = ({'amount': amount, 'callback': callback,
+                           'input_line': input_line, 'cur': cur,
+                           'keys': '', 'count': count,
+                           'new_cur': 0, 'buf': buf})
+    return cur, False
+
 
 def operator_d(buf, input_line, pos1, pos2, overwrite=False):
     """Simulate the behavior of the 'd' operator. Remove everything between two
@@ -297,16 +308,7 @@ def motion_dollar(input_line, cur, count):
 
 def motion_f(input_line, cur, count):
     """"Simulate vi's behavior for the f key."""
-    global catching_keys_data
-    if 'new_cur' in catching_keys_data:
-        new_cur = catching_keys_data['new_cur']
-        catching_keys_data = {'amount': 0}
-        return new_cur, True
-    start_catching_keys({'amount': 1, 'callback': "cb_motion_f",
-                         'input_line': input_line, 'cur': cur,
-                         'keys': '', 'count': count,
-                         'new_cur': 0})
-    return cur, False
+    return start_catching_keys(1, "cb_motion_f", input_line, cur, count)
 
 def cb_motion_f():
     """Callback for key_f."""
@@ -316,19 +318,11 @@ def cb_motion_f():
                   catching_keys_data['cur'],
                   count=catching_keys_data['count'])
     catching_keys_data['new_cur'] = pos + catching_keys_data['cur']
+    cb_pressed_keys_check()
 
 def motion_F(input_line, cur, count):
     """"Simulate vi's behavior for the F key."""
-    global catching_keys_data
-    if 'new_cur' in catching_keys_data:
-        new_cur = catching_keys_data['new_cur']
-        catching_keys_data = {'amount': 0}
-        return new_cur, True
-    start_catching_keys({'amount': 1, 'callback': "cb_motion_F",
-                         'input_line': input_line, 'cur': cur,
-                         'keys': '', 'count': count,
-                         'new_cur': 0})
-    return cur, False
+    return start_catching_keys(1, "cb_motion_F", input_line, cur, count)
 
 def cb_motion_F():
     """Callback for key_F."""
@@ -339,19 +333,11 @@ def cb_motion_F():
                    (catching_keys_data['cur'] + 1)),
                   count=catching_keys_data['count'])
     catching_keys_data['new_cur'] = catching_keys_data['cur'] - pos
+    cb_pressed_keys_check()
 
 def motion_t(input_line, cur, count):
     """"Simulate vi's behavior for the t key."""
-    global catching_keys_data
-    if 'new_cur' in catching_keys_data:
-        new_cur = catching_keys_data['new_cur']
-        catching_keys_data = {'amount': 0}
-        return new_cur, True
-    start_catching_keys({'amount': 1, 'callback': "cb_motion_t",
-                         'input_line': input_line, 'cur': cur,
-                         'keys': '', 'count': count,
-                         'new_cur': 0})
-    return cur, False
+    return start_catching_keys(1, "cb_motion_t", input_line, cur, count)
 
 def cb_motion_t():
     """Callback for key_t."""
@@ -364,19 +350,11 @@ def cb_motion_t():
         catching_keys_data['new_cur'] = pos + catching_keys_data['cur'] - 1
     else:
         catching_keys_data['new_cur'] = catching_keys_data['cur']
+    cb_pressed_keys_check()
 
 def motion_T(input_line, cur, count):
     """"Simulate vi's behavior for the T key."""
-    global catching_keys_data
-    if 'new_cur' in catching_keys_data:
-        new_cur = catching_keys_data['new_cur']
-        catching_keys_data = {'amount': 0}
-        return new_cur, True
-    start_catching_keys({'amount': 1, 'callback': "cb_motion_T",
-                         'input_line': input_line, 'cur': cur,
-                         'keys': '', 'count': count,
-                         'new_cur': 0})
-    return cur, False
+    return start_catching_keys(1, "cb_motion_T", input_line, cur, count)
 
 def cb_motion_T():
     """Callback for key_T."""
@@ -390,6 +368,7 @@ def cb_motion_T():
         catching_keys_data['new_cur'] = catching_keys_data['cur'] - pos + 1
     else:
         catching_keys_data['new_cur'] = catching_keys_data['cur']
+    cb_pressed_keys_check()
 
 
 def key_cc(buf, input_line, cur, repeat):
@@ -419,23 +398,22 @@ def key_G(buf, input_line, cur, repeat):
 
 def key_r(buf, input_line, cur, repeat):
     """"Simulate vi's behavior for the r key."""
-    start_catching_keys({'amount': 1, 'callback': "cb_key_r", 'buf': buf,
-                         'input_line': input_line, 'cur': cur,
-                         'count': repeat, 'keys': ''})
+    start_catching_keys(1, "cb_key_r", input_line, cur, repeat, buf)
 
-def cb_key_r(cb_data):
+def cb_key_r():
     """Callback for key_r."""
-    input_line = list(cb_data['input_line'])
-    count = cb_data['count']
-    if count > len(input_line):
-        return
-    cur = cb_data['cur']
-    for _ in range(max(1, count)):
-        input_line[cur] = cb_data['keys'][0]
-        cur += 1
-    input_line = ''.join(input_line)
-    weechat.buffer_set(cb_data['buf'], "input", input_line)
-    set_cur(cb_data['buf'], input_line, cur-1)
+    global catching_keys_data
+    input_line = list(catching_keys_data['input_line'])
+    count = catching_keys_data['count']
+    cur = catching_keys_data['cur']
+    if cur + count <= len(input_line):
+        for _ in range(max(1, count)):
+            input_line[cur] = catching_keys_data['keys'][0]
+            cur += 1
+        input_line = ''.join(input_line)
+        weechat.buffer_set(catching_keys_data['buf'], "input", input_line)
+        set_cur(catching_keys_data['buf'], input_line, cur-1)
+    catching_keys_data = {'amount': 0}
 
 def key_R(buf, input_line, cur, repeat):
     """Simulate vi's behavior for the R key."""
@@ -716,7 +694,6 @@ def cb_key_combo_default(data, signal, signal_data):
                 catching_keys_data['amount'] -= 1
                 if catching_keys_data['amount'] == 0:
                     globals()[catching_keys_data['callback']]()
-                    cb_pressed_keys_check()
                     cb_clear_vi_buffers()
             return weechat.WEECHAT_RC_OK_EAT
     # Backspace
