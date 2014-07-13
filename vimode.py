@@ -688,7 +688,9 @@ def cb_key_combo_default(data, signal, signal_data):
     """
     global catching_keys_data
     if mode == "NORMAL" and cmd_text == '':
-        if signal_data.startswith(""):
+        if esc_pressed:
+            return weechat.WEECHAT_RC_OK_EAT
+        elif signal_data.startswith(""):
             for key in SPECIAL_KEYS:
                 if re.match(key, signal_data[1:]):
                     return weechat.WEECHAT_RC_OK
