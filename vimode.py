@@ -43,14 +43,11 @@ key bindings and commands, as well as normal/insert modes.
 
 {header}Usage:
 To switch to Normal mode, press Ctrl + Space. The Escape key can be used as \
-well. The Esc key will conflict with existing key bindings (e.g. Esc followed \
-by 'd' will be detected as meta-d) for WeeChat ≤ 0.4.3.
-It works as expected for WeeChat ≥ 0.4.4. You can get the latest WeeChat from \
-{url}http://weechat.org/download/devel/
+well.
 
 You can use the {bold}mode_indicator{reset} bar item to view the current mode.
 
-To switch back to Insert mode, you can use i/a/A (or the c operator.)
+To switch back to Insert mode, you can use i, a, A, etc.
 To execute a command, simply precede it with a ':' while in normal mode, \
 for example: ":h" or ":s/foo/bar".
 
@@ -103,9 +100,6 @@ G    Goto line {com}[count]{reset}, default last line. {note}
 {note} Counts may not work as intended, depending on the value of \
 weechat.look.scroll_amount.
 
-{todo} u %   ||   better search (/), add: n N ?
-{todo} .
-
 {header}Current commands:
 :h                  Help ({bold}/help{reset})
 :set                Set WeeChat config option ({bold}/set{reset})
@@ -119,10 +113,6 @@ shell{reset})
 {note} Supports regex (check docs for the Python re module for more \
 information). '&' in the replacement is also substituted by the pattern. If \
 the 'g' flag isn't present, only the first match will be substituted.
-{todo} :w <file> saves buffer's contents to file
-{todo} :r <file> puts file's content in input line/open in buffer?
-{todo} Display matching commands with (basic) help, like Penta \
-and Vimp do.
 
 {header}History:
 {header2}version 0.1:{reset}   initial release
@@ -137,7 +127,6 @@ K, :!cmd. Improved substitutions (:s/foo/bar). Many fixes and improvements. \
 WeeChat ≥ 1.0.0 required.
 """.format(header=weechat.color("red"), header2=weechat.color("lightred"),
            header3=weechat.color("brown"), url=weechat.color("cyan"),
-           todo="%sTODO:%s" % (weechat.color("blue"), weechat.color("reset")),
            note="%s*%s" % (weechat.color("red"), weechat.color("reset")),
            bold=weechat.color("bold"), reset=weechat.color("reset"),
            com=weechat.color("green"))
