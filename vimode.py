@@ -155,9 +155,9 @@ help_buf = None # buffer used to show help message (/vimode)
 # See start_catching_keys(catching_data)
 catching_keys_data = {'amount': 0}
 
-# Special keys that should be allowed while in normal mode: arrows,
-# meta-j<number>, meta-<number>, and meta-<arrow>
-SPECIAL_KEYS = [r"\[1;3[A-D]", r"j?[0-99]", r"\[[A-D]"]
+# Special keys that should be allowed while in normal mode: -<SPECIAL_KEY>
+# arrows (meta2-[A-D]), meta-j<number>, meta-<number>, and meta2-<arrow>, Enter
+SPECIAL_KEYS = [r"\[\[1;3[A-D]", r"\[j?[0-99]", r"\[\[[A-D]", r"\?", r"M"]
 
 # Some common vi commands.
 # Others may be present in cb_exec_cmd:
@@ -326,8 +326,8 @@ def key_f(buf, input_line, cur, repeat):
 def cb_key_f(cb_data):
     """Callback for key_f."""
     pattern = cb_data['keys'][0]
-    count = cb_data['count']
-    pos = get_pos(cb_data['input_line'], pattern, cb_data['cur'], count=count)
+    pos = get_pos(cb_data['input_line'], pattern, cb_data['cur'],
+                  count=cb_data['count'])
     set_cur(cb_data['buf'], cb_data['input_line'], pos + cb_data['cur'])
 
 def key_F(buf, input_line, cur, repeat):
@@ -339,11 +339,26 @@ def key_F(buf, input_line, cur, repeat):
 def cb_key_F(cb_data):
     """Callback for key_F."""
     pattern = cb_data['keys'][0]
-    count = cb_data['count']
     pos = get_pos(cb_data['input_line'][::-1], pattern,
                   len(cb_data['input_line']) - (cb_data['cur'] + 1),
-                  count=count)
+                  count=cb_data['count'])
     set_cur(cb_data['buf'], cb_data['input_line'], cb_data['cur'] - pos)
+
+def key_t(buf, input_line, cur, repeat):
+    """"Simulate vi's behavior for the t key."""
+    start_catching_keys({'amount': 1, 'callback': "cb_key_t", 'buf': buf,
+                         'input_line': input_line, 'cur': cur,
+                         'count': repeat, 'keys': ''})
+
+def cb_key_t(cb_data):
+    """Callback for key_t."""
+    pattern = cb_data['keys'][0]
+    pos = get_pos(cb_data['input_line'], pattern, cb_data['cur'],
+                  ignore_zero=True, count=cb_data['count'])
+    if pos > 0:
+        set_cur(cb_data['buf'], cb_data['input_line'],
+                pos + cb_data['cur'] - 1)
+
 
 def key_r(buf, input_line, cur, repeat):
     """"Simulate vi's behavior for the r key."""
@@ -389,6 +404,7 @@ VI_KEYS = {'j': "/window scroll_down",
            'J': "/buffer -1",
            'f': key_f,
            'F': key_F,
+           't': key_t,
            'r': key_r,
            'R': key_R}
 
@@ -636,9 +652,9 @@ def cb_key_combo_default(data, signal, signal_data):
     """
     global catching_keys_data
     if mode == "NORMAL":
-        if signal_data.startswith("["):
+        if signal_data.startswith(""):
             for key in SPECIAL_KEYS:
-                if re.match(key, signal_data[2:]):
+                if re.match(key, signal_data[1:]):
                     return weechat.WEECHAT_RC_OK
             return weechat.WEECHAT_RC_OK_EAT
         elif is_printing(signal_data, pressed_keys):
@@ -653,8 +669,7 @@ def cb_key_combo_default(data, signal, signal_data):
     elif mode != "INSERT" and signal_data == "?":
         weechat.command('', "/input move_previous_char")
         return weechat.WEECHAT_RC_OK_EAT
-    else:
-        return weechat.WEECHAT_RC_OK
+    return weechat.WEECHAT_RC_OK
 
 def cb_key_pressed(data, signal, signal_data):
     """Handle key presses.
