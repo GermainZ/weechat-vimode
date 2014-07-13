@@ -33,6 +33,14 @@ from StringIO import StringIO
 from csv import reader
 
 
+weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
+                 SCRIPT_DESC, '', '')
+VERSION = weechat.info_get("version_number", '')
+if int(VERSION) < 0x01000000:
+    weechat.prnt('', ("%svimode: please upgrade to WeeChat ≥ 1.0.0. Previous"
+                      " versions are not supported." % weechat.color("red")))
+
+
 # Type '/vimode' in WeeChat to view this help formatted text.
 HELP_TEXT = """
 Github repo: {url}https://github.com/GermainZ/weechat-vimode
@@ -147,6 +155,14 @@ help_buf = None # buffer used to show help message (/vimode)
 
 # See start_catching_keys(catching_data)
 catching_keys_data = {'amount': 0}
+
+# Load the user's key bindings
+infolist = weechat.infolist_get("key", '', "default")
+USER_KEYS = {}
+while weechat.infolist_next(infolist):
+    key_internal = weechat.infolist_string(infolist, "key_internal")
+    command = weechat.infolist_string(infolist, "command")
+    USER_KEYS[key_internal] = command
 
 # Special keys that should be allowed while in normal mode: -<SPECIAL_KEY>
 # arrows (meta2-[A-D]), meta-j<number>, meta-<number>, and meta2-<arrow>, Enter
@@ -526,13 +542,18 @@ def cb_input_set(data, remaining_calls):
 def cb_handle_esc(data, remaining_calls):
     """Send key press signal so it gets picked in cb_key_pressed.
 
-    Esc acts as a modifier and usually waits for another keypress, but we're
-    already eating that in cb_key_combo_default.
+    Esc acts as a modifier and usually waits for another keypress, which we're
+    eating in cb_key_combo_default. However, we want to send the intended
+    key press (e.g. user presses esc followed by t, we want to send t).
 
     """
     global cmd_text
-    weechat.hook_signal_send("key_pressed", weechat.WEECHAT_HOOK_SIGNAL_STRING,
-                             data)
+    data = re.sub(r"^\[(?!\[)", '', data)
+    if data in USER_KEYS:
+        weechat.command('', USER_KEYS[data])
+    else:
+        weechat.hook_signal_send("key_pressed", weechat.WEECHAT_HOOK_SIGNAL_STRING,
+                                 data)
     if cmd_text == ":[":
         cmd_text = ':'
     return weechat.WEECHAT_RC_OK
@@ -548,37 +569,39 @@ def cb_pressed_keys_check(data=None, remaining_calls=None):
     cur = weechat.buffer_get_integer(buf, "input_pos")
     # If the last pressed key was Escape, this one will be detected as an arg
     # as Escape acts like a modifier (pressing Esc, then pressing i is detected
-    # as pressing meta-i). We'll emulate it being pressed again, so that the
-    # user's input is actually processed normally.
+    # as pressing meta-i). cb_handle_esc will emulate the actual key being
+    # pressed again, so that the user's input is actually processed normally.
     if esc_pressed is True:
         esc_pressed = False
-        weechat.hook_timer(50, 0, 1, "cb_handle_esc", pressed_keys[-1])
-    if mode == "INSERT" or mode == "REPLACE":
+        weechat.hook_timer(50, 0, 1, "cb_handle_esc", pressed_keys)
+    # Ctrl-Space or Esc was pressed. We need to handle Esc regardless of the
+    # current mode (see comments just above and cb_handle_esc).
+    if (((mode == "INSERT" or mode == "REPLACE") and pressed_keys == "@")
+        or pressed_keys == "["):
         # Ctrl + Space, or Escape
-        if pressed_keys == "@" or pressed_keys == "[":
-            set_mode("NORMAL")
-            set_cur(buf, input_line, cur)
-            if pressed_keys == "[":
-                esc_pressed = True
-    elif mode == "NORMAL":
+        set_mode("NORMAL")
+        set_cur(buf, input_line, cur)
+        if pressed_keys == "[":
+            esc_pressed = True
+    if mode == "NORMAL":
         # We strip all numbers and check if the the combo is recognized below,
         # then extract the numbers, if any, and pass them as the repeat factor.
-        buffer_stripped = re.sub(NUM, '', vi_buffer)
-        if vi_buffer in ['i', 'a', 'A']:
+        buffer_stripped = re.sub(NUM, '', pressed_keys)
+        if pressed_keys in ['i', 'a', 'A']:
             set_mode("INSERT")
-            if vi_buffer == 'a':
+            if pressed_keys == 'a':
                 weechat.command('', "/input move_next_char")
-            elif vi_buffer == 'A':
+            elif pressed_keys == 'A':
                 weechat.command('', "/input move_end_of_line")
         # Pressing only '0' should not be detected as a repeat count.
-        elif vi_buffer == '0':
+        elif pressed_keys == '0':
             weechat.command('', VI_KEYS['0'])
         # Quick way to detect repeats (e.g. d5w). This isn't perfect, as things
         # like "5d2w1" are detected as "dw" repeated 521 times, but it should
         # be alright as long as the user doesn't try to break it on purpose.
         # Maximum number of repeats performed is 10000.
         elif len(buffer_stripped) > 0:
-            repeat = ''.join(re.findall(NUM, vi_buffer))
+            repeat = ''.join(re.findall(NUM, pressed_keys))
             if len(repeat) > 0:
                 repeat = min([int(repeat), 10000])
             else:
@@ -588,7 +611,7 @@ def cb_pressed_keys_check(data=None, remaining_calls=None):
             if buffer_stripped in VI_KEYS:
                 if isinstance(VI_KEYS[buffer_stripped], str):
                     for _ in range(1 if repeat == 0 else repeat):
-                        weechat.command('', VI_KEYS[re.sub(NUM, '', vi_buffer)])
+                        weechat.command('', VI_KEYS[re.sub(NUM, '', pressed_keys)])
                 else:
                     VI_KEYS[buffer_stripped](buf, input_line, cur, repeat)
             # We then check if the pressed key is a motion (e.g. 'w')
@@ -771,12 +794,6 @@ def cb_help(data, buffer, args):
     weechat.prnt(help_buf, HELP_TEXT)
     return weechat.WEECHAT_RC_OK
 
-weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
-                 SCRIPT_DESC, '', '')
-VERSION = weechat.info_get("version_number", '')
-if int(VERSION) < 0x01000000:
-    weechat.prnt('', ("%svimode: please upgrade to WeeChat ≥ 1.0.0. Previous"
-                      " versions are not supported." % weechat.color("red")))
 
 weechat.bar_item_new("mode_indicator", "cb_mode_indicator", '')
 weechat.bar_item_new("cmd_text", "cb_cmd_text", '')
