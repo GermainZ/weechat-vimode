@@ -480,7 +480,12 @@ def cb_exec_cmd(data, remaining_calls):
     for s/foo/bar type commands).
 
     """
-    global input_line
+    global input_line, cmd_text
+    # Clear the command line
+    cmd_text = ''
+    weechat.bar_item_update("cmd_text")
+    weechat.command('', "/bar hide vi_cmd")
+    # Process the entered command
     data = list(data)
     del data[0]
     data = ''.join(data)
@@ -682,7 +687,7 @@ def cb_key_combo_default(data, signal, signal_data):
 
     """
     global catching_keys_data
-    if mode == "NORMAL":
+    if mode == "NORMAL" and cmd_text == '':
         if signal_data.startswith(""):
             for key in SPECIAL_KEYS:
                 if re.match(key, signal_data[1:]):
@@ -697,8 +702,11 @@ def cb_key_combo_default(data, signal, signal_data):
                     cb_clear_vi_buffers()
             return weechat.WEECHAT_RC_OK_EAT
     # Backspace
-    elif mode != "INSERT" and signal_data == "?":
+    elif mode == "REPLACE" and signal_data == "?":
         weechat.command('', "/input move_previous_char")
+        return weechat.WEECHAT_RC_OK_EAT
+    # Command mode - eat the keys, they're handled in cb_key_pressed
+    elif cmd_text != '':
         return weechat.WEECHAT_RC_OK_EAT
     return weechat.WEECHAT_RC_OK
 
@@ -720,32 +728,13 @@ def cb_key_pressed(data, signal, signal_data):
         elif cmd_text != '':
             # Backspace key
             if signal_data == "?":
-                buf = weechat.current_buffer()
-                input_line = weechat.buffer_get_string(buf, 'input')
                 # Remove the last character from our command line
                 cmd_text = list(cmd_text)
                 del cmd_text[-1]
                 cmd_text = ''.join(cmd_text)
-                # We can't actually eat these keystrokes, so simply removing
-                # the last character would result in the last two characters
-                # being removed (once by the backspace key, once by our script)
-                # Instead, we'll just set the input line in a millisecond to
-                # its original value, leaving it untouched.
-                weechat.hook_timer(1, 0, 1, "cb_input_set", input_line)
             # Return key
             elif signal_data == "M":
-                buf = weechat.current_buffer()
-                # Clear the input line, therefore nullifying the effect of the
-                # Return key, then set it back a millisecond later.
-                # This leaves the input box untouched and allows us to execute
-                # the command filled in in our command line.
-                # We can only pass strings as data using hook_timer, so we'll
-                # use the global variable input_line in our cb_exec_cmd
-                # function instead to reset the input box's value.
-                input_line = weechat.buffer_get_string(buf, 'input')
-                weechat.buffer_set(buf, "input", '')
                 weechat.hook_timer(1, 0, 1, "cb_exec_cmd", cmd_text)
-                cmd_text = ''
             # The key is a normal key, so just append it to our command line.
             elif is_printing(signal_data, pressed_keys):
                 cmd_text += signal_data
