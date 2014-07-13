@@ -81,6 +81,10 @@ f{com}{{char}}{reset}     To {com}[count]{reset}'th occurence of \
 {com}{{char}}{reset} to the right.
 F{com}{{char}}{reset}     To {com}[count]{reset}'th occurence of \
 {com}{{char}}{reset} to the left.
+t{com}{{char}}{reset}     Till before {com}[count]{reset}'th occurence of \
+{com}{{char}}{reset} to the right.
+T{com}{{char}}{reset}     Till after {com}[count]{reset}'th occurence of \
+{com}{{char}}{reset} to the left.
 dd          Delete line.
 cc          Delete line and start insert.
 yy          Yank line.
@@ -128,8 +132,8 @@ bindings and commands.
 {header2}version 0.3:{reset}   separate operators from motions and better \
 handling. Added yank operator, I/p. Other fixes and improvements. The Escape \
 key should work flawlessly on WeeChat ≥ 0.4.4.
-{header2}version 0.4:{reset}   added: f, F, r, R, W, E, B, gt, gT, J, K, \
-:!cmd. Improved substitutions (:s/foo/bar). Other fixes and improvements. \
+{header2}version 0.4:{reset}   added: f, F, t, T, r, R, W, E, B, gt, gT, J, \
+K, :!cmd. Improved substitutions (:s/foo/bar). Many fixes and improvements. \
 WeeChat ≥ 1.0.0 required.
 """.format(header=weechat.color("red"), header2=weechat.color("lightred"),
            header3=weechat.color("brown"), url=weechat.color("cyan"),
