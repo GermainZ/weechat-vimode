@@ -365,6 +365,32 @@ def cb_motion_t():
     else:
         catching_keys_data['new_cur'] = catching_keys_data['cur']
 
+def motion_T(input_line, cur, count):
+    """"Simulate vi's behavior for the T key."""
+    global catching_keys_data
+    if 'new_cur' in catching_keys_data:
+        new_cur = catching_keys_data['new_cur']
+        catching_keys_data = {'amount': 0}
+        return new_cur, True
+    start_catching_keys({'amount': 1, 'callback': "cb_motion_T",
+                         'input_line': input_line, 'cur': cur,
+                         'keys': '', 'count': count,
+                         'new_cur': 0})
+    return cur, False
+
+def cb_motion_T():
+    """Callback for key_T."""
+    global catching_keys_data
+    pattern = catching_keys_data['keys'][0]
+    pos = get_pos(catching_keys_data['input_line'][::-1], pattern,
+                  (len(catching_keys_data['input_line']) -
+                   (catching_keys_data['cur'] + 1)),
+                  count=catching_keys_data['count'])
+    if pos > 0:
+        catching_keys_data['new_cur'] = catching_keys_data['cur'] - pos + 1
+    else:
+        catching_keys_data['new_cur'] = catching_keys_data['cur']
+
 
 def key_cc(buf, input_line, cur, repeat):
     """Simulate vi's behavior for cc."""
@@ -442,7 +468,7 @@ VI_OPERATORS = ['c', 'd', 'y']
 # Vi motions. Each motion must have a corresponding function, called "motion_X"
 # where X is the motion.
 VI_MOTIONS = ['w', 'e', 'b', '^', '$', 'h', 'l', '0', 'W', 'E', 'B', 'f', 'F',
-              't']
+              't', 'T']
 # Special characters for motions. The corresponding function's name is converted
 # before calling. For example, '^' will call 'motion_carret' instead of
 # 'motion_^' (which isn't allowed because of illegal characters.)
