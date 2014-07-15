@@ -1,18 +1,29 @@
 You can view this help text inside WeeChat by typing `/vimode`
 
 # Description:
-An attempt to add a vi-like mode to WeeChat, which provides some common vi
-key bindings and commands, as well as normal/insert modes.
+Add vi/vim-like modes and keybindings to WeeChat.
 
 # Usage:
-To switch to Normal mode, press Ctrl + Space. The Escape key can be used as
-well.
+To switch to Normal mode, press `Esc` or `Ctrl+Space`.
 
-You can use the `mode_indicator` bar item to view the current mode.
+Two bar items are provided:
 
-To switch back to Insert mode, you can use `i`, `a`, `A`, etc.
-To execute a command, simply precede it with a `:` while in normal mode,
-for example: `:h` or `:s/foo/bar`.
+* **mode_indicator**: shows the currently active mode (e.g. `NORMAL`).
+* **vi_buffer**: shows partial commands (e.g. `df`).
+
+You can add them to your input bar. For example, using `iset.pl`:
+
+* `/iset weechat.bar.input.items`
+* `<Alt+Enter>`
+* Add `[mode_indicator]+` at the start, and `,[vi_buffer]` at the end.
+* Final result example:
+    `"{bold}[mode_indicator]+{reset}[input_prompt]+(away),[input_search],
+    [input_paste],input_text,{bold}[vi_buffer]{reset}"`
+
+To switch back to Insert mode, you can use i, a, A, etc.
+
+To execute an Ex command, simply precede it with a ':' while in normal mode,
+for example: ":h" or ":s/foo/bar".
 
 # Current key bindings:
 
@@ -71,7 +82,7 @@ weechat.look.scroll_amount.
 * `:q`              Closes current buffer (`/close`)
 * `:qall`           Exits WeeChat (`/exit`)
 * `:w`              Saves settings (`/save`)
-* `:!**{cmd}**`     Execute shell command (`/exec -buffer shell`)
+* `:!{cmd}`     Execute shell command (`/exec -buffer shell`)
 * `:s/pattern/repl`
 * `:s/pattern/repl/g`
                     Search/Replace \*
@@ -89,5 +100,6 @@ the `g` flag isn't present, only the first match will be substituted.
                     yank operator, I/p. Other fixes and improvements. The
                     Escape key should work flawlessly on WeeChat ≥ 0.4.4.
 * version 0.4:      added: f, F, t, T, r, R, W, E, B, gt, gT, J, K, :!cmd.
-                    Improved substitutions (:s/foo/bar). Many fixes and
-                    improvements. WeeChat ≥ 1.0.0 required.
+                    Improved substitutions (:s/foo/bar). Rewrote key handling
+                    logic to take advantage of WeeChat API additions.
+                    Many fixes and improvements. WeeChat ≥ 1.0.0 required.
