@@ -638,7 +638,10 @@ VI_KEYS = {'j': "/window scroll_down",
            '\x01Wk': "/window up",
            '\x01Wl': "/window right",
            '\x01W=': "/window balance",
-           '\x01Wx': "/window swap"}
+           '\x01Wx': "/window swap",
+           '\x01Ws': "/window splith",
+           '\x01Wv': "/window splitv",
+           '\x01Wq': "/window merge"}
 
 # Vi operators. Each operator must have a corresponding function,
 # called "operator_X" where X is the operator. For example: "operator_c"

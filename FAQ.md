@@ -61,3 +61,10 @@ in WeeChat:
     /key bind ctrl-Wl /window right
     /key bind ctrl-W= /window balance
     /key bind ctrl-Wx /window swap
+
+You're also encouraged to add these key bindings, so that you can use them
+while in Insert mode:
+
+    /key bind ctrl-Ws /window splith
+    /key bind ctrl-Wv /window splitv
+    /key bind ctrl-Wq /window merge
