@@ -46,23 +46,24 @@ for example: ":h" or ":s/foo/bar".
 * `0`               To the first character of the line.
 * `^`               To the first non-blank character of the line exclusive.
 * `$`               To the end of the line exclusive.
-
-### Other:
-* `x`               Delete **[count]** characters under and after the cursor.
-* `r{char}`         Replace **[count]** characters with **{char}**` under and
-                    after the cursor.
-* `R`               Enter Replace mode. Counts are not supported.
 * `f{char}`         To **[count]**'th occurence of **{char}** to the right.
 * `F{char}`         To **[count]**'th occurence of **{char}** to the left.
 * `t{char}`         Till before **[count]**'th occurence of **{char}** to the
                     right.
 * `T{char}`         Till after **[count]**'th occurence of **{char}** to the
                     left.
+
+### Other:
+* `x`               Delete **[count]** characters under and after the cursor.
+* `r{char}`         Replace **[count]** characters with **{char}**` under and
+                    after the cursor.
+* `R`               Enter Replace mode. Counts are not supported.
 * `dd`              Delete line.
 * `cc`              Delete line and start insert.
-* `yy`              Yank line.
+* `yy`              Yank line to clipboard. Requires xsel.
 * `I`               Insert text before the first non-blank in the line.
-* `p`               Put the text from the clipboard after the cursor.
+* `p`               Put the text from the clipboard after the cursor. Requires
+                    xsel.
 
 ## Buffer:
 * `j`               Scroll buffer up. \*
@@ -82,7 +83,7 @@ weechat.look.scroll_amount.
 * `:q`              Closes current buffer (`/close`)
 * `:qall`           Exits WeeChat (`/exit`)
 * `:w`              Saves settings (`/save`)
-* `:!{cmd}`     Execute shell command (`/exec -buffer shell`)
+* `:!{cmd}`         Execute shell command (`/exec -buffer shell`)
 * `:s/pattern/repl`
 * `:s/pattern/repl/g`
                     Search/Replace \*

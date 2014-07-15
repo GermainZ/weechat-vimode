@@ -78,22 +78,17 @@ d{com}{{motion}}{reset}   Delete text that {com}{{motion}}{reset} moves over.
 c{com}{{motion}}{reset}   Delete {com}{{motion}}{reset} text and start insert.
 y{com}{{motion}}{reset}   Yank {com}{{motion}}{reset} text to clipboard.
 {header3}Motions:
-h    {com}[count]{reset} characters to the left exclusive.
-l    {com}[count]{reset} characters to the right exclusive.
-w    {com}[count]{reset} words forward exclusive.
-W    {com}[count]{reset} WORDS forward exclusive.
-b    {com}[count]{reset} words backward.
-B    {com}[count]{reset} WORDS backward.
-e    Forward to the end of word {com}[count]{reset} inclusive.
-E    Forward to the end of WORD {com}[count]{reset} inclusive.
-0    To the first character of the line.
-^    To the first non-blank character of the line exclusive.
-$    To the end of the line exclusive.
-{header3}Other:
-x           Delete {com}[count]{reset} characters under and after the cursor.
-r{com}{{count}}{reset}    Replace {com}[count]{reset} characters with \
-{com}{{count}}{reset} under and after the cursor.
-R           Enter Replace mode. Counts are not supported.
+h           {com}[count]{reset} characters to the left exclusive.
+l           {com}[count]{reset} characters to the right exclusive.
+w           {com}[count]{reset} words forward exclusive.
+W           {com}[count]{reset} WORDS forward exclusive.
+b           {com}[count]{reset} words backward.
+B           {com}[count]{reset} WORDS backward.
+e           Forward to the end of word {com}[count]{reset} inclusive.
+E           Forward to the end of WORD {com}[count]{reset} inclusive.
+0           To the first character of the line.
+^           To the first non-blank character of the line exclusive.
+$           To the end of the line exclusive.
 f{com}{{char}}{reset}     To {com}[count]{reset}'th occurence of \
 {com}{{char}}{reset} to the right.
 F{com}{{char}}{reset}     To {com}[count]{reset}'th occurence of \
@@ -102,21 +97,26 @@ t{com}{{char}}{reset}     Till before {com}[count]{reset}'th occurence of \
 {com}{{char}}{reset} to the right.
 T{com}{{char}}{reset}     Till after {com}[count]{reset}'th occurence of \
 {com}{{char}}{reset} to the left.
+{header3}Other:
+x           Delete {com}[count]{reset} characters under and after the cursor.
+r{com}{{count}}{reset}    Replace {com}[count]{reset} characters with \
+{com}{{count}}{reset} under and after the cursor.
+R           Enter Replace mode. Counts are not supported.
 dd          Delete line.
 cc          Delete line and start insert.
-yy          Yank line.
+yy          Yank line. Requires xsel.
 I           Insert text before the first non-blank in the line.
-p           Put the text from the clipboard after the cursor.
+p           Put the text from the clipboard after the cursor. Requires xsel.
 {header2}Buffer:
-j    Scroll buffer up. {note}
-k    Scroll buffer down. {note}
-gt   Go to the next buffer.
-     (or K)
-gT   Go to the previous buffer.
-     (or J)
-gg   Goto first line.
-G    Goto line {com}[count]{reset}, default last line. {note}
-/    Launch WeeChat search mode
+j           Scroll buffer up. {note}
+k           Scroll buffer down. {note}
+gt          Go to the next buffer.
+            (or K)
+gT          Go to the previous buffer.
+            (or J)
+gg          Goto first line.
+G           Goto line {com}[count]{reset}, default last line. {note}
+/           Launch WeeChat search mode
 {note} Counts may not work as intended, depending on the value of \
 weechat.look.scroll_amount.
 
