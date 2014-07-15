@@ -38,10 +38,6 @@ from csv import reader
 
 weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
                  SCRIPT_DESC, '', '')
-VERSION = weechat.info_get("version_number", '')
-if int(VERSION) < 0x01000000:
-    weechat.prnt('', ("%svimode: please upgrade to WeeChat ≥ 1.0.0. Previous"
-                      " versions are not supported." % weechat.color("red")))
 
 
 # Type '/vimode' in WeeChat to view this help formatted text.
@@ -634,7 +630,14 @@ VI_KEYS = {'j': "/window scroll_down",
            '\x01[j96': "/buffer 96",
            '\x01[j97': "/buffer 97",
            '\x01[j98': "/buffer 98",
-           '\x01[j99': "/buffer 99"}
+           '\x01[j99': "/buffer 99",
+           '\x01^': "/input jump_last_buffer",
+           '\x01Wh': "/window left",
+           '\x01Wj': "/window down",
+           '\x01Wk': "/window up",
+           '\x01Wl': "/window right",
+           '\x01W=': "/window balance",
+           '\x01Wx': "/window swap"}
 
 # Vi operators. Each operator must have a corresponding function,
 # called "operator_X" where X is the operator. For example: "operator_c"
@@ -937,6 +940,38 @@ def cb_help(data, buf, args):
     weechat.command(help_buf, "/window scroll_top")
     return weechat.WEECHAT_RC_OK
 
+
+# Warn the user if he's using an unsupported WeeChat version
+VERSION = weechat.info_get("version_number", '')
+if int(VERSION) < 0x01000000:
+    weechat.prnt('', ("%svimode: please upgrade to WeeChat ≥ 1.0.0. Previous"
+                      " versions are not supported." % weechat.color("red")))
+
+# Warn the user about problematic key bindings that may conflict with vimode.
+# For example: meta-wmeta-s is bound by default to /window swap.
+#    If the user pressed Esc-w, WeeChat will detect it as meta-w and will not
+#    send any signal to cb_key_combo_default just yet, since it's the beginning
+#    of a known key combo.
+#    Instead, cb_key_combo_default will receive the Esc-ws signal, which
+#    becomes "ws" after removing the Esc part, and won't know how to handle it.
+# The solution is to remove these key bindings, but that's up to the user.
+infolist = weechat.infolist_get("key", '', "default")
+problematic_keybindings = []
+while weechat.infolist_next(infolist):
+    key = weechat.infolist_string(infolist, "key")
+    command = weechat.infolist_string(infolist, "command")
+    if re.match(r"meta-\wmeta-", key):
+        problematic_keybindings.append("%s -> %s" % (key, command))
+if problematic_keybindings:
+    weechat.prnt('', ("%sProblematic keybindings detected:" %
+                      weechat.color("red")))
+    for keybinding in problematic_keybindings:
+        weechat.prnt('', "%s    %s" % (weechat.color("red"), keybinding))
+    weechat.prnt('', ("%sThese keybindings may conflict with vimode." %
+                      weechat.color("red")))
+    weechat.prnt('', ("%sFor help, see: https://github.com/GermainZ/weechat-"
+                      "vimode/blob/master/FAQ.md" % weechat.color("red")))
+del problematic_keybindings
 
 # Create bar items and setup hooks.
 weechat.bar_item_new("mode_indicator", "cb_mode_indicator", '')
