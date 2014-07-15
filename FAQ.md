@@ -30,41 +30,8 @@ You have a few choices to solve this:
 
 * Live with it if you consider it's not important enough.
 * Remove the problematic key bindings entirely.
-* Rebind the problematic key bindings to something that won't conflict. The
-  following key bindings are used in vimode's Normal mode, so you can use them
-  for consistency:
-    * `ctrl-^` -> `/input jump_last_buffer`
-    * `ctrl-Wh` -> `/window left`
-    * `ctrl-Wj` -> `/window down`
-    * `ctrl-Wk` -> `/window up`
-    * `ctrl-Wl` -> `/window right`
-    * `ctrl-W=` -> `/window balance`
-    * `ctrl-Wx` -> `/window swap`
+* Rebind the problematic key bindings to something that won't conflict.
 
-To remove the old key bindings and add these, copy/paste the following commands
-in WeeChat:
-
-    /key unbind meta-jmeta-l
-    /key unbind meta-jmeta-r
-    /key unbind meta-jmeta-s
-    /key unbind meta-wmeta-meta2-A
-    /key unbind meta-wmeta-meta2-B
-    /key unbind meta-wmeta-meta2-C
-    /key unbind meta-wmeta-meta2-D
-    /key unbind meta-wmeta-b
-    /key unbind meta-wmeta-s
-    /key unbind ctrl-W
-    /key bind ctrl-^ /input jump_last_buffer
-    /key bind ctrl-Wh /window left
-    /key bind ctrl-Wj /window down
-    /key bind ctrl-Wk /window up
-    /key bind ctrl-Wl /window right
-    /key bind ctrl-W= /window balance
-    /key bind ctrl-Wx /window swap
-
-You're also encouraged to add these key bindings, so that you can use them
-while in Insert mode:
-
-    /key bind ctrl-Ws /window splith
-    /key bind ctrl-Wv /window splitv
-    /key bind ctrl-Wq /window merge
+To remove the conflicting key bindings and add recommended key bindings,
+you can run the `/vimode bind_keys` command inside WeeChat. To only list
+changes, run `/vimode bind_keys --list` instead.

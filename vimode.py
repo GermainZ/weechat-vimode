@@ -936,16 +936,45 @@ def cb_help_closed(data, buf):
     help_buf = None
     return weechat.WEECHAT_RC_OK
 
-def cb_help(data, buf, args):
+def cb_vimode_cmd(data, buf, args):
     """Show the script's help."""
     global help_buf
-    if help_buf is None:
-        help_buf = weechat.buffer_new("vimode", '', '', "cb_help_closed", '')
-        weechat.command(help_buf, "/buffer set time_for_each_line 0")
-    buf_num = weechat.buffer_get_integer(help_buf, "number")
-    weechat.command('', "/buffer %s" % buf_num)
-    weechat.prnt(help_buf, HELP_TEXT)
-    weechat.command(help_buf, "/window scroll_top")
+    if not args or args == "help":
+        if help_buf is None:
+            help_buf = weechat.buffer_new("vimode", '', '', "cb_help_closed",
+                                          '')
+            weechat.command(help_buf, "/buffer set time_for_each_line 0")
+        buf_num = weechat.buffer_get_integer(help_buf, "number")
+        weechat.command('', "/buffer %s" % buf_num)
+        weechat.prnt(help_buf, HELP_TEXT)
+        weechat.command(help_buf, "/window scroll_top")
+    elif args.startswith("bind_keys"):
+        weechat.infolist_reset_item_cursor(infolist)
+        commands = ["/key unbind ctrl-W",
+                    "/key bind ctrl-^ /input jump_last_buffer",
+                    "/key bind ctrl-Wh /window left",
+                    "/key bind ctrl-Wj /window down",
+                    "/key bind ctrl-Wk /window up",
+                    "/key bind ctrl-Wl /window right",
+                    "/key bind ctrl-W= /window balance",
+                    "/key bind ctrl-Wx /window swap",
+                    "/key bind ctrl-Ws /window splith",
+                    "/key bind ctrl-Wv /window splitv",
+                    "/key bind ctrl-Wq /window merge"]
+        while weechat.infolist_next(infolist):
+            key = weechat.infolist_string(infolist, "key")
+            if re.match(r"meta-\wmeta-", key):
+                commands.append("/key unbind %s" % key)
+        if args == "bind_keys":
+            weechat.prnt('', "Running commands:")
+            for command in commands:
+                weechat.command('', command)
+            weechat.prnt('', "Done.")
+        elif args == "bind_keys --list":
+            weechat.prnt('', "Listing commands we'll run:")
+            for command in commands:
+                weechat.prnt('', "    %s" % command)
+            weechat.prnt('', "Done.")
     return weechat.WEECHAT_RC_OK
 
 
@@ -977,6 +1006,10 @@ if problematic_keybindings:
         weechat.prnt('', "%s    %s" % (weechat.color("red"), keybinding))
     weechat.prnt('', ("%sThese keybindings may conflict with vimode." %
                       weechat.color("red")))
+    weechat.prnt('', ("%sYou can remove problematic key bindings and add"
+                      " recommended ones by using /vimode bind_keys,"
+                      " or only list them with /vimode bind_keys --list" %
+                      weechat.color("red")))
     weechat.prnt('', ("%sFor help, see: https://github.com/GermainZ/weechat-"
                       "vimode/blob/master/FAQ.md" % weechat.color("red")))
 del problematic_keybindings
@@ -991,4 +1024,10 @@ vi_cmd = weechat.bar_new("vi_cmd", "off", "0", "root", '', "bottom",
 weechat.hook_signal("key_pressed", "cb_key_pressed", '')
 weechat.hook_signal("key_combo_default", "cb_key_combo_default", '')
 
-weechat.hook_command("vimode", "vimode help", '', '', '', "cb_help", '')
+weechat.hook_command("vimode", SCRIPT_DESC, "[help | bind_keys [--list]]",
+                     "     help: show help\n"
+                     "bind_keys: unbind problematic keys, and bind recommended"
+                     " keys to use in WeeChat\n"
+                     "          --list: only list changes",
+                     "help || bind_keys |--list",
+                     "cb_vimode_cmd", '')
