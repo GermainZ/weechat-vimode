@@ -724,7 +724,7 @@ def cb_exec_cmd(data, remaining_calls):
     return weechat.WEECHAT_RC_OK
 
 
-# Pressed keys handling
+# Pressed keys handling.
 def cb_key_pressed(data, signal, signal_data):
     """Detect potential Esc presses.
 
@@ -742,10 +742,14 @@ def cb_key_pressed(data, signal, signal_data):
 
 def cb_check_esc(data, remaining_calls):
     """Check if the Esc key was pressed and change the mode accordingly."""
-    global esc_pressed
+    global esc_pressed, vi_buffer, catching_keys_data
     if last_signal_time == float(data):
         esc_pressed = True
         set_mode("NORMAL")
+        # Cancel any current partial commands.
+        vi_buffer = ''
+        catching_keys_data = {'amount': 0}
+        weechat.bar_item_update("vi_buffer")
     return weechat.WEECHAT_RC_OK
 
 def cb_key_combo_default(data, signal, signal_data):
