@@ -363,7 +363,7 @@ def motion_f(input_line, cur, count):
 def cb_motion_f():
     """Callback for motion_f."""
     pattern = catching_keys_data['keys']
-    pos = get_pos(catching_keys_data['input_line'], pattern,
+    pos = get_pos(catching_keys_data['input_line'], re.escape(pattern),
                   catching_keys_data['cur'], True,
                   catching_keys_data['count'])
     catching_keys_data['new_cur'] = pos + catching_keys_data['cur']
@@ -377,7 +377,7 @@ def motion_F(input_line, cur, count):
 def cb_motion_F():
     """Callback for motion_F."""
     pattern = catching_keys_data['keys']
-    pos = get_pos(catching_keys_data['input_line'][::-1], pattern,
+    pos = get_pos(catching_keys_data['input_line'][::-1], re.escape(pattern),
                   (len(catching_keys_data['input_line']) -
                    (catching_keys_data['cur'] + 1)),
                   True, catching_keys_data['count'])
@@ -392,7 +392,7 @@ def motion_t(input_line, cur, count):
 def cb_motion_t():
     """Callback for motion_t."""
     pattern = catching_keys_data['keys']
-    pos = get_pos(catching_keys_data['input_line'], pattern,
+    pos = get_pos(catching_keys_data['input_line'], re.escape(pattern),
                   catching_keys_data['cur'] + 1,
                   True, catching_keys_data['count'])
     pos += 1
@@ -410,7 +410,7 @@ def motion_T(input_line, cur, count):
 def cb_motion_T():
     """Callback for motion_T."""
     pattern = catching_keys_data['keys']
-    pos = get_pos(catching_keys_data['input_line'][::-1], pattern,
+    pos = get_pos(catching_keys_data['input_line'][::-1], re.escape(pattern),
                   (len(catching_keys_data['input_line']) -
                    (catching_keys_data['cur'] + 1)) + 1,
                   True, catching_keys_data['count'])
