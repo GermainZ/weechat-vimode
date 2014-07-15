@@ -17,8 +17,8 @@ You can add them to your input bar. For example, using `iset.pl`:
 * `<Alt+Enter>`
 * Add `[mode_indicator]+` at the start, and `,[vi_buffer]` at the end.
 * Final result example:
-    `"{bold}[mode_indicator]+{reset}[input_prompt]+(away),[input_search],
-    [input_paste],input_text,{bold}[vi_buffer]{reset}"`
+    `"[mode_indicator]+[input_prompt]+(away),[input_search],
+    [input_paste],input_text,[vi_buffer]"`
 
 To switch back to Insert mode, you can use i, a, A, etc.
 
