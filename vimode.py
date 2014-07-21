@@ -170,6 +170,7 @@ REGEX_MOTION_LOWERCASE_E = re.compile(r"\w\b|[^\w ]")
 REGEX_MOTION_UPPERCASE_E = re.compile(r"\S(?!\S)")
 REGEX_MOTION_LOWERCASE_B = re.compile(r"\w\b|[^\w ]")
 REGEX_MOTION_UPPERCASE_B = re.compile(r"\w\b(?!\S)")
+REGEX_MOTION_GE = re.compile(r"\b\w|[^\w ]")
 REGEX_MOTION_CARRET = re.compile(r"\S")
 
 # Some common vi Ex commands.
@@ -195,22 +196,14 @@ def get_pos(data, regex, cur, ignore_zero=False, count=0):
             if ignore_zero and matches[count-1] == 0:
                 if len(matches) > count:
                     pos = matches[count]
-                #else:
-                    #pos = len(data)
             else:
                 pos = matches[count-1]
-        #else:
-            #pos = 0
     elif matches:
         if ignore_zero and matches[0] == 0:
             if len(matches) > 1:
                 pos = matches[1]
-            #else:
-                #pos = len(data)
         else:
             pos = matches[0]
-    #else:
-        #pos = 0
     return pos
 
 def set_cur(buf, input_line, pos):
@@ -330,6 +323,28 @@ def motion_B(input_line, cur, count):
     new_cur = len(input_line) - cur
     pos = get_pos(input_line[::-1], REGEX_MOTION_UPPERCASE_B, new_cur,
                   count=count)
+    if not pos:
+        return 0, False
+    pos = len(input_line) - (pos + new_cur + 1)
+    return pos, True
+
+def motion_ge(input_line, cur, count):
+    """Return the new position of the cursor after the 'ge' motion."""
+    count = max(1, count)
+    new_cur = len(input_line) - cur - 1
+    pos = get_pos(input_line[::-1], REGEX_MOTION_GE, new_cur,
+                  count)
+    if not pos:
+        return 0, False
+    pos = len(input_line) - (pos + new_cur + 1)
+    return pos, True
+
+def motion_gE(input_line, cur, count):
+    """Return the new position of the cursor after the 'gE' motion."""
+    count = max(1, count)
+    new_cur = len(input_line) - cur
+    pos = get_pos(input_line[::-1], REGEX_MOTION_GE, new_cur,
+                  True, count)
     if not pos:
         return 0, False
     pos = len(input_line) - (pos + new_cur + 1)
@@ -485,6 +500,18 @@ def key_R(buf, input_line, cur, repeat):
     """Simulate vi's behavior for the R key."""
     set_mode("REPLACE")
 
+def key_tilda(buf, input_line, cur, repeat):
+    """Simulate vi's behavior for the ~ key."""
+    repeat = max(1, repeat)
+    input_line = list(input_line)
+    while repeat and cur < len(input_line):
+        input_line[cur] = input_line[cur].swapcase()
+        repeat -= 1
+        cur += 1
+    input_line = ''.join(input_line)
+    weechat.buffer_set(buf, "input", input_line)
+    set_cur(buf, input_line, cur)
+
 def key_alt_j(buf, input_line, cur, repeat):
     """Preserve WeeChat's alt-j buffer switching.
 
@@ -509,6 +536,7 @@ VI_KEYS = {'j': "/window scroll_down",
            'G': key_G,
            'gg': "/window scroll_top",
            'x': "/input delete_next_char",
+           'X': "/input delete_previous_char",
            'dd': "/input delete_line",
            'cc': key_cc,
            'i': key_i,
@@ -525,6 +553,7 @@ VI_KEYS = {'j': "/window scroll_down",
            'J': "/buffer -1",
            'r': key_r,
            'R': key_R,
+           '~': key_tilda,
            '\x01[[A': "/input history_previous",
            '\x01[[B': "/input history_next",
            '\x01[[C': "/input move_next_char",
@@ -537,6 +566,7 @@ VI_KEYS = {'j': "/window scroll_down",
            '\x01[[2~': key_i,
            '\x01M': "/input return",
            '\x01?': "/input move_previous_char",
+           ' ': "/input move_next_char",
            '\x01[j': key_alt_j,
            '\x01[1': "/buffer *1",
            '\x01[2': "/buffer *2",
@@ -655,11 +685,11 @@ VI_OPERATORS = ['c', 'd', 'y']
 # Vi motions. Each motion must have a corresponding function, called "motion_X"
 # where X is the motion.
 VI_MOTIONS = ['w', 'e', 'b', '^', '$', 'h', 'l', '0', 'W', 'E', 'B', 'f', 'F',
-              't', 'T']
+              't', 'T', 'ge', 'gE']
 # Special characters for motions. The corresponding function's name is
 # converted before calling. For example, '^' will call 'motion_carret' instead
 # of 'motion_^' (which isn't allowed because of illegal characters.)
-SPECIAL_CHARS = {'^': "carret", '$': "dollar"}
+SPECIAL_CHARS = {'^': "carret", '$': "dollar", '~': "tilda"}
 
 
 # Callbacks for bar items.
@@ -686,11 +716,6 @@ def cb_exec_cmd(data, remaining_calls):
     """Translate and execute our custom commands to WeeChat command, with
     any passed arguments.
     """
-    # global cmd_text
-    # Clear the command line
-    # cmd_text = ''
-    # weechat.bar_item_update("cmd_text")
-    # weechat.command('', "/bar hide vi_cmd")
     # Process the entered command
     data = list(data)
     del data[0]
@@ -898,16 +923,21 @@ def cb_key_combo_default(data, signal, signal_data):
     if vi_keys in VI_KEYS:
         if isinstance(VI_KEYS[vi_keys], str):
             for _ in range(max(1, repeat)):
+                # This is to avoid crashing WeeChat on script reloads/unloads,
+                # because no hooks must still be running when a script is
+                # reloaded or unloaded.
+                if VI_KEYS[vi_keys] == "/input return":
+                    return weechat.WEECHAT_RC_OK
                 weechat.command('', VI_KEYS[vi_keys])
         else:
             VI_KEYS[vi_keys](buf, input_line, cur, repeat)
     # It's a motion (e.g. 'w') — call the function "motion_X" where X is the
     # motion, then set the cursor's position to what that function returned.
-    elif vi_keys[0] in VI_MOTIONS:
-        if vi_keys[0] in SPECIAL_CHARS:
-            func = "motion_%s" % SPECIAL_CHARS[vi_keys[0]]
+    elif vi_keys in VI_MOTIONS:
+        if vi_keys in SPECIAL_CHARS:
+            func = "motion_%s" % SPECIAL_CHARS[vi_keys]
         else:
-            func = "motion_%s" % vi_keys[0]
+            func = "motion_%s" % vi_keys
         end, _ = globals()[func](input_line, cur, repeat)
         set_cur(buf, input_line, end)
     # It's an operator + motion (e.g. 'dw') — call the function "motion_X"
@@ -916,11 +946,11 @@ def cb_key_combo_default(data, signal, signal_data):
     # then handles changing the input line.
     elif (len(vi_keys) > 1 and
           vi_keys[0] in VI_OPERATORS and
-          vi_keys[1] in VI_MOTIONS):
-        if vi_keys[1] in SPECIAL_CHARS:
-            func = "motion_%s" % SPECIAL_CHARS[vi_keys[1]]
+          vi_keys[1:] in VI_MOTIONS):
+        if vi_keys in SPECIAL_CHARS:
+            func = "motion_%s" % SPECIAL_CHARS[vi_keys[1:]]
         else:
-            func = "motion_%s" % vi_keys[1]
+            func = "motion_%s" % vi_keys[1:]
         pos, overwrite = globals()[func](input_line, cur, repeat)
         oper = "operator_%s" % vi_keys[0]
         globals()[oper](buf, input_line, cur, pos, overwrite)
