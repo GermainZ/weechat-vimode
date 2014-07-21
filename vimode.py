@@ -441,6 +441,11 @@ def key_a(buf, input_line, cur, repeat):
     set_cur(buf, input_line, cur+1)
     set_mode("INSERT")
 
+def key_A(buf, input_line, cur, repeat):
+    """Simulate vi's behavior for a."""
+    set_cur(buf, input_line, len(input_line) - 1)
+    set_mode("INSERT")
+
 def key_I(buf, input_line, cur, repeat):
     """Simulate vi's behavior for I."""
     pos, _ = motion_carret(input_line, cur, 0)
@@ -508,6 +513,7 @@ VI_KEYS = {'j': "/window scroll_down",
            'cc': key_cc,
            'i': key_i,
            'a': key_a,
+           'A': key_A,
            'I': key_I,
            'yy': key_yy,
            'p': "/input clipboard_paste",
