@@ -206,9 +206,14 @@ def get_pos(data, regex, cur, ignore_zero=False, count=0):
             pos = matches[0]
     return pos
 
-def set_cur(buf, input_line, pos):
-    """Set the cursor's position."""
-    pos = min(pos, len(input_line) - 1)
+def set_cur(buf, input_line, pos, cap=True):
+    """Set the cursor's position.
+
+    cap -- if True, the cursor's position can't be more than the input line's
+           length.
+    """
+    if cap:
+        pos = min(pos, len(input_line) - 1)
     weechat.buffer_set(buf, "input_pos", str(pos))
 
 def start_catching_keys(amount, callback, input_line, cur, count, buf=None):
@@ -453,12 +458,12 @@ def key_i(buf, input_line, cur, repeat):
 
 def key_a(buf, input_line, cur, repeat):
     """Simulate vi's behavior for a."""
-    set_cur(buf, input_line, cur+1)
+    set_cur(buf, input_line, cur+1, False)
     set_mode("INSERT")
 
 def key_A(buf, input_line, cur, repeat):
     """Simulate vi's behavior for a."""
-    set_cur(buf, input_line, len(input_line) - 1)
+    set_cur(buf, input_line, len(input_line), False)
     set_mode("INSERT")
 
 def key_I(buf, input_line, cur, repeat):
@@ -929,6 +934,8 @@ def cb_key_combo_default(data, signal, signal_data):
                 if VI_KEYS[vi_keys] == "/input return":
                     return weechat.WEECHAT_RC_OK
                 weechat.command('', VI_KEYS[vi_keys])
+                current_cur = weechat.buffer_get_integer(buf, "input_pos")
+                set_cur(buf, input_line, current_cur)
         else:
             VI_KEYS[vi_keys](buf, input_line, cur, repeat)
     # It's a motion (e.g. 'w') — call the function "motion_X" where X is the
