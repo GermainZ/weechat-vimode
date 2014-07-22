@@ -106,6 +106,8 @@ p           Put the text from the clipboard after the cursor. Requires xsel.
 {header2}Buffer:
 j           Scroll buffer up. {note}
 k           Scroll buffer down. {note}
+^U          Scroll buffer page up. {note}
+^D          Scroll buffer page down. {note}
 gt          Go to the next buffer.
             (or K)
 gT          Go to the previous buffer.
@@ -114,7 +116,9 @@ gg          Goto first line.
 G           Goto line {com}[count]{reset}, default last line. {note}
 /           Launch WeeChat search mode
 {note} Counts may not work as intended, depending on the value of \
-weechat.look.scroll_amount.
+{bold}weechat.look.scroll_amount{reset} and \
+{bold}weechat.look.scroll_page_percent{reset}.
+
 
 {header}Current commands:
 :h                  Help ({bold}/help{reset})
@@ -674,6 +678,8 @@ VI_KEYS = {'j': "/window scroll_down",
            '\x01[j98': "/buffer 98",
            '\x01[j99': "/buffer 99",
            '\x01^': "/input jump_last_buffer",
+           '\x01D': "/window page_down",
+           '\x01U': "/window page_up",
            '\x01Wh': "/window left",
            '\x01Wj': "/window down",
            '\x01Wk': "/window up",

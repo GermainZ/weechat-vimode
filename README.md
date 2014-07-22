@@ -68,6 +68,8 @@ for example: ":h" or ":s/foo/bar".
 ## Buffer:
 * `j`               Scroll buffer up. \*
 * `k`               Scroll buffer down. \*
+* `^U`              Scroll buffer page up. \*
+* `^D`              Scroll buffer page down. \*
 * `gt` or `K`       Go to the next buffer.
 * `gT` or `J`       Go to the previous buffer.
 * `gg`              Goto first line.
@@ -75,7 +77,7 @@ for example: ":h" or ":s/foo/bar".
 * `/`               Launch WeeChat search mode
 
 \* Counts may not work as intended, depending on the value of
-weechat.look.scroll_amount.
+`weechat.look.scroll_amount` and `weechat.look.scroll_page_percent`.
 
 # Current commands:
 * `:h`              Help (`/help`)
