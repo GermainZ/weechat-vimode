@@ -157,7 +157,7 @@ vi_buffer = ''
 # Buffer used to show help message (/vimode).
 help_buf = None
 # See cb_key_combo_default(…).
-esc_pressed = False
+esc_pressed = 0
 # See cb_key_pressed(…).
 last_signal_time = 0
 # See start_catching_keys(…) for more info.
@@ -780,7 +780,7 @@ def cb_check_esc(data, remaining_calls):
     """Check if the Esc key was pressed and change the mode accordingly."""
     global esc_pressed, vi_buffer, catching_keys_data
     if last_signal_time == float(data):
-        esc_pressed = True
+        esc_pressed += 1
         set_mode("NORMAL")
         # Cancel any current partial commands.
         vi_buffer = ''
@@ -801,15 +801,11 @@ def cb_key_combo_default(data, signal, signal_data):
     # If Esc was pressed, strip the Esc part from the pressed keys.
     # Example: user presses Esc followed by i. This is detected as "\x01[i",
     # but we only want to handle "i".
-    if esc_pressed:
-        esc_pressed = False
-        # Multiple Esc presses (multiples of 3?) seem to cancel themselves.
-        if signal_data.startswith("\x01["):
-            keys = signal_data[2:]
-        else:
-            keys = signal_data
-    else:
-        keys = signal_data
+    keys = signal_data
+    for i in range(esc_pressed):
+        if keys.startswith("\x01["):
+            keys = keys[2:]
+    esc_pressed = 0
 
     # Nothing to do here.
     if mode == "INSERT":
