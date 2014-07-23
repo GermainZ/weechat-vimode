@@ -954,7 +954,7 @@ def cb_key_combo_default(data, signal, signal_data):
     elif (len(vi_keys) > 1 and
           vi_keys[0] in VI_OPERATORS and
           vi_keys[1:] in VI_MOTIONS):
-        if vi_keys in SPECIAL_CHARS:
+        if vi_keys[1:] in SPECIAL_CHARS:
             func = "motion_%s" % SPECIAL_CHARS[vi_keys[1:]]
         else:
             func = "motion_%s" % vi_keys[1:]
