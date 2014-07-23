@@ -808,10 +808,15 @@ def cb_key_combo_default(data, signal, signal_data):
     # Example: user presses Esc followed by i. This is detected as "\x01[i",
     # but we only want to handle "i".
     keys = signal_data
-    for i in range(esc_pressed):
-        if keys.startswith("\x01["):
-            keys = keys[2:]
-    esc_pressed = 0
+    if esc_pressed and keys.startswith("\x01[" * esc_pressed):
+        keys = keys[2*esc_pressed:]
+        # Multiples of 3 seem to "cancel" themselves
+        # e.g. Esc-Esc-Esc-Alt-j-11 is detected as "\x01[\x01[\x01" followed by
+        # "\x01[j11" (two different signals).
+        if signal_data == "\x01[" * 3:
+            esc_pressed = -1 # Because cb_check_esc will increment it to 0
+        else:
+            esc_pressed = 0
 
     # Nothing to do here.
     if mode == "INSERT":
