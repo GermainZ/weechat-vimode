@@ -80,6 +80,8 @@ w           {com}[count]{reset} words forward exclusive.
 W           {com}[count]{reset} WORDS forward exclusive.
 b           {com}[count]{reset} words backward.
 B           {com}[count]{reset} WORDS backward.
+ge          Backward to the end of word {com}[count]{reset} inclusive.
+gE          Backward to the end of WORD {com}[count]{reset} inclusive.
 e           Forward to the end of word {com}[count]{reset} inclusive.
 E           Forward to the end of WORD {com}[count]{reset} inclusive.
 0           To the first character of the line.
@@ -94,7 +96,11 @@ t{com}{{char}}{reset}     Till before {com}[count]{reset}'th occurence of \
 T{com}{{char}}{reset}     Till after {com}[count]{reset}'th occurence of \
 {com}{{char}}{reset} to the left.
 {header3}Other:
+<Space>     {com}[count]{reset} characters to the right.
+<BS>        {com}[count]{reset} characters to the left.
 x           Delete {com}[count]{reset} characters under and after the cursor.
+X           Delete {com}[count]{reset} characters before the cursor.
+~           Switch case of the character under the cursor.
 r{com}{{count}}{reset}    Replace {com}[count]{reset} characters with \
 {com}{{count}}{reset} under and after the cursor.
 R           Enter Replace mode. Counts are not supported.
@@ -103,7 +109,7 @@ cc          Delete line and start insert.
 yy          Yank line. Requires xsel.
 I           Insert text before the first non-blank in the line.
 p           Put the text from the clipboard after the cursor. Requires xsel.
-{header2}Buffer:
+{header2}Buffers:
 j           Scroll buffer up. {note}
 k           Scroll buffer down. {note}
 ^U          Scroll buffer page up. {note}
@@ -115,10 +121,20 @@ gT          Go to the previous buffer.
 gg          Goto first line.
 G           Goto line {com}[count]{reset}, default last line. {note}
 /           Launch WeeChat search mode
+^^          Jump to the last buffer.
 {note} Counts may not work as intended, depending on the value of \
 {bold}weechat.look.scroll_amount{reset} and \
 {bold}weechat.look.scroll_page_percent{reset}.
-
+{header2}Windows:
+^Wh         Go to the window to the left.
+^Wj         Go to the window below the current one.
+^Wk         Go to the window above the current one.
+^Wl         Go to the window to the right.
+^W=         Balance windows' sizes.
+^Wx         Swap window with the next one.
+^Ws         Split current window in two.
+^Wv         Split current window in two, but vertically.
+^Wq         Quit current window.
 
 {header}Current commands:
 :h                  Help ({bold}/help{reset})
@@ -143,8 +159,9 @@ key bindings and commands.
 handling. Added yank operator, I/p. Other fixes and improvements. The Escape \
 key should work flawlessly on WeeChat ≥ 0.4.4.
 {header2}version 0.4:{reset}   added: f, F, t, T, r, R, W, E, B, gt, gT, J, \
-K, :!cmd. Improved substitutions (:s/foo/bar). Rewrote key handling logic to \
-take advantage of WeeChat API additions. Many fixes and improvements. \
+K, ge, gE, X, ~, ^^, ^Wh, ^Wj, ^Wk, ^Wl, ^W=, ^Wx, ^Ws, ^Wv, ^Wq, :!cmd. \
+Improved substitutions (:s/foo/bar). Rewrote key handling logic to take \
+advantage of WeeChat API additions. Many fixes and improvements. \
 WeeChat ≥ 1.0.0 required.
 """.format(header=weechat.color("red"), header2=weechat.color("lightred"),
            header3=weechat.color("brown"), url=weechat.color("cyan"),
