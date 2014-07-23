@@ -822,7 +822,7 @@ def cb_key_combo_default(data, signal, signal_data):
         if len(keys) == 1:
             weechat.command('', "/input delete_next_char")
         elif keys == "\x01?":
-            weechat.command('', "/input move_prev_char")
+            weechat.command('', "/input move_previous_char")
             return weechat.WEECHAT_RC_OK_EAT
         return weechat.WEECHAT_RC_OK
 
