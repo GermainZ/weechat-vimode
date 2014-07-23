@@ -106,6 +106,8 @@ p           Put the text from the clipboard after the cursor. Requires xsel.
 {header2}Buffer:
 j           Scroll buffer up. {note}
 k           Scroll buffer down. {note}
+^U          Scroll buffer page up. {note}
+^D          Scroll buffer page down. {note}
 gt          Go to the next buffer.
             (or K)
 gT          Go to the previous buffer.
@@ -114,7 +116,9 @@ gg          Goto first line.
 G           Goto line {com}[count]{reset}, default last line. {note}
 /           Launch WeeChat search mode
 {note} Counts may not work as intended, depending on the value of \
-weechat.look.scroll_amount.
+{bold}weechat.look.scroll_amount{reset} and \
+{bold}weechat.look.scroll_page_percent{reset}.
+
 
 {header}Current commands:
 :h                  Help ({bold}/help{reset})
@@ -157,7 +161,7 @@ vi_buffer = ''
 # Buffer used to show help message (/vimode).
 help_buf = None
 # See cb_key_combo_default(…).
-esc_pressed = False
+esc_pressed = 0
 # See cb_key_pressed(…).
 last_signal_time = 0
 # See start_catching_keys(…) for more info.
@@ -674,6 +678,8 @@ VI_KEYS = {'j': "/window scroll_down",
            '\x01[j98': "/buffer 98",
            '\x01[j99': "/buffer 99",
            '\x01^': "/input jump_last_buffer",
+           '\x01D': "/window page_down",
+           '\x01U': "/window page_up",
            '\x01Wh': "/window left",
            '\x01Wj': "/window down",
            '\x01Wk': "/window up",
@@ -780,7 +786,7 @@ def cb_check_esc(data, remaining_calls):
     """Check if the Esc key was pressed and change the mode accordingly."""
     global esc_pressed, vi_buffer, catching_keys_data
     if last_signal_time == float(data):
-        esc_pressed = True
+        esc_pressed += 1
         set_mode("NORMAL")
         # Cancel any current partial commands.
         vi_buffer = ''
@@ -801,15 +807,11 @@ def cb_key_combo_default(data, signal, signal_data):
     # If Esc was pressed, strip the Esc part from the pressed keys.
     # Example: user presses Esc followed by i. This is detected as "\x01[i",
     # but we only want to handle "i".
-    if esc_pressed:
-        esc_pressed = False
-        # Multiple Esc presses (multiples of 3?) seem to cancel themselves.
-        if signal_data.startswith("\x01["):
-            keys = signal_data[2:]
-        else:
-            keys = signal_data
-    else:
-        keys = signal_data
+    keys = signal_data
+    for i in range(esc_pressed):
+        if keys.startswith("\x01["):
+            keys = keys[2:]
+    esc_pressed = 0
 
     # Nothing to do here.
     if mode == "INSERT":
