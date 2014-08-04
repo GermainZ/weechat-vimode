@@ -834,6 +834,9 @@ def cb_key_combo_default(data, signal, signal_data):
             esc_pressed = -1 # Because cb_check_esc will increment it to 0
         else:
             esc_pressed = 0
+    elif keys == "\x01@":
+        set_mode("NORMAL")
+        return weechat.WEECHAT_RC_OK_EAT
 
     # Nothing to do here.
     if mode == "INSERT":
