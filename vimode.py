@@ -840,8 +840,9 @@ def cb_exec_cmd(data, remaining_calls):
             args = data[1]
         if cmd in VI_COMMANDS:
             weechat.command('', "%s %s" % (VI_COMMANDS[cmd], args))
+        # No vi commands defined, run the command as a WeeChat command.
         else:
-            weechat.prnt('', "Command '%s' not found." % cmd)
+            weechat.command('', "/{} {}".format(cmd, args))
     return weechat.WEECHAT_RC_OK
 
 
