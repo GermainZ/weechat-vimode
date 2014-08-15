@@ -779,7 +779,7 @@ def cb_exec_cmd(data, remaining_calls):
         if cmd in VI_COMMANDS:
             weechat.command('', "%s %s" % (VI_COMMANDS[cmd], args))
         else:
-            weechat.prnt('', "Command '%s' not found." % cmd)
+            weechat.command('', "/{} {}".format(cmd, args))
     return weechat.WEECHAT_RC_OK
 
 
