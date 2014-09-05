@@ -183,6 +183,8 @@ esc_pressed = 0
 last_signal_time = 0
 # See start_catching_keys(…) for more info.
 catching_keys_data = {'amount': 0}
+# Used for ; and , to store the last f/F/t/T motion.
+last_search_motion = {'motion': None, 'data': None}
 
 # Regex patterns for some motions
 REGEX_MOTION_LOWERCASE_W = re.compile(r"\b\w|[^\w ]")
@@ -401,13 +403,19 @@ def motion_f(input_line, cur, count):
     count = max(1, count)
     return start_catching_keys(1, "cb_motion_f", input_line, cur, count)
 
-def cb_motion_f():
-    """Callback for motion_f."""
+def cb_motion_f(update_last=True):
+    """Callback for motion_f.
+
+    update_last -- set to True if calling from ';' or ','.
+    """
+    global last_search_motion
     pattern = catching_keys_data['keys']
     pos = get_pos(catching_keys_data['input_line'], re.escape(pattern),
                   catching_keys_data['cur'], True,
                   catching_keys_data['count'])
     catching_keys_data['new_cur'] = pos + catching_keys_data['cur']
+    if update_last:
+        last_search_motion = {'motion': 'f', 'data': pattern}
     cb_key_combo_default(None, None, '')
 
 def motion_F(input_line, cur, count):
@@ -415,14 +423,20 @@ def motion_F(input_line, cur, count):
     count = max(1, count)
     return start_catching_keys(1, "cb_motion_F", input_line, cur, count)
 
-def cb_motion_F():
-    """Callback for motion_F."""
+def cb_motion_F(update_last=True):
+    """Callback for motion_F.
+
+    update_last -- set to True if calling from ';' or ','.
+    """
+    global last_search_motion
     pattern = catching_keys_data['keys']
     pos = get_pos(catching_keys_data['input_line'][::-1], re.escape(pattern),
                   (len(catching_keys_data['input_line']) -
                    (catching_keys_data['cur'] + 1)),
                   True, catching_keys_data['count'])
     catching_keys_data['new_cur'] = catching_keys_data['cur'] - pos
+    if update_last:
+        last_search_motion = {'motion': 'F', 'data': pattern}
     cb_key_combo_default(None, None, '')
 
 def motion_t(input_line, cur, count):
@@ -430,8 +444,12 @@ def motion_t(input_line, cur, count):
     count = max(1, count)
     return start_catching_keys(1, "cb_motion_t", input_line, cur, count)
 
-def cb_motion_t():
-    """Callback for motion_t."""
+def cb_motion_t(update_last=True):
+    """Callback for motion_t.
+
+    update_last -- set to True if calling from ';' or ','.
+    """
+    global last_search_motion
     pattern = catching_keys_data['keys']
     pos = get_pos(catching_keys_data['input_line'], re.escape(pattern),
                   catching_keys_data['cur'] + 1,
@@ -441,6 +459,8 @@ def cb_motion_t():
         catching_keys_data['new_cur'] = pos + catching_keys_data['cur'] - 1
     else:
         catching_keys_data['new_cur'] = catching_keys_data['cur']
+    if update_last:
+        last_search_motion = {'motion': 't', 'data': pattern}
     cb_key_combo_default(None, None, '')
 
 def motion_T(input_line, cur, count):
@@ -448,8 +468,12 @@ def motion_T(input_line, cur, count):
     count = max(1, count)
     return start_catching_keys(1, "cb_motion_T", input_line, cur, count)
 
-def cb_motion_T():
-    """Callback for motion_T."""
+def cb_motion_T(update_last=True):
+    """Callback for motion_T.
+
+    update_last -- set to True if calling from ';' or ','.
+    """
+    global last_search_motion
     pattern = catching_keys_data['keys']
     pos = get_pos(catching_keys_data['input_line'][::-1], re.escape(pattern),
                   (len(catching_keys_data['input_line']) -
@@ -460,6 +484,8 @@ def cb_motion_T():
         catching_keys_data['new_cur'] = catching_keys_data['cur'] - pos + 1
     else:
         catching_keys_data['new_cur'] = catching_keys_data['cur']
+    if update_last:
+        last_search_motion = {'motion': 'T', 'data': pattern}
     cb_key_combo_default(None, None, '')
 
 
@@ -554,6 +580,31 @@ def cb_key_alt_j():
     global catching_keys_data
     weechat.command('', "/buffer " + catching_keys_data['keys'])
     catching_keys_data = {'amount': 0}
+
+def key_semicolon(buf, input_line, cur, repeat, swap=False):
+    """Simulate vi's behavior for the ; key.
+
+    swap -- if True, the last motion will be repeated in the opposite direction
+            (e.g. 'f' instead of 'F').
+    """
+    global catching_keys_data, vi_buffer
+    count = max(1, repeat)
+    catching_keys_data = ({'amount': 0,
+                           'input_line': input_line, 'cur': cur,
+                           'keys': last_search_motion['data'], 'count': count,
+                           'new_cur': 0, 'buf': buf})
+    # Swap the motion's case if called from key_comma.
+    if swap:
+        motion = last_search_motion['motion'].swapcase()
+    else:
+        motion = last_search_motion['motion']
+    func = "cb_motion_%s" % motion
+    vi_buffer = motion
+    globals()[func](False)
+
+def key_comma(buf, input_line, cur, repeat):
+    """Simulate vi's behavior for the , key."""
+    key_semicolon(buf, input_line, cur, repeat, True)
 
 # Common vi key bindings. If the value is a string, it's assumed it's a WeeChat
 # command, and a function otherwise.
@@ -705,7 +756,9 @@ VI_KEYS = {'j': "/window scroll_down",
            '\x01Wx': "/window swap",
            '\x01Ws': "/window splith",
            '\x01Wv': "/window splitv",
-           '\x01Wq': "/window merge"}
+           '\x01Wq': "/window merge",
+           ';': key_semicolon,
+           ',': key_comma}
 
 # Vi operators. Each operator must have a corresponding function,
 # called "operator_X" where X is the operator. For example: "operator_c"
@@ -717,7 +770,8 @@ VI_MOTIONS = ['w', 'e', 'b', '^', '$', 'h', 'l', '0', 'W', 'E', 'B', 'f', 'F',
 # Special characters for motions. The corresponding function's name is
 # converted before calling. For example, '^' will call 'motion_carret' instead
 # of 'motion_^' (which isn't allowed because of illegal characters.)
-SPECIAL_CHARS = {'^': "carret", '$': "dollar", '~': "tilda"}
+SPECIAL_CHARS = {'^': "carret", '$': "dollar", '~': "tilda", ';': "semicolon",
+                 ',': "comma"}
 
 
 # Callbacks for bar items.
