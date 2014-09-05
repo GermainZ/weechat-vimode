@@ -61,6 +61,9 @@ for example: ":h" or ":s/foo/bar".
 * `x`               Delete **[count]** characters under and after the cursor.
 * `X`               Delete **[count]** characters before the cursor.
 * `~`               Switch case of the character under the cursor.
+* `;`               Repeat latest f, t, F or T **[count]** times.
+* `,`               Repeat latest f, t, F or T in opposite direction
+                    **[count]** times.
 * `r{char}`         Replace **[count]** characters with **{char}**` under and
                     after the cursor.
 * `R`               Enter Replace mode. Counts are not supported.
@@ -104,10 +107,15 @@ for example: ":h" or ":s/foo/bar".
 * `:q`              Closes current buffer (`/close`)
 * `:qall`           Exits WeeChat (`/exit`)
 * `:w`              Saves settings (`/save`)
+* `:sp`             Split current window in two (`/window splith`).
+* `:vsp`            Split current window in two, but vertically
+                    (`/window splitv`).
 * `:!{cmd}`         Execute shell command (`/exec -buffer shell`)
 * `:s/pattern/repl`
 * `:s/pattern/repl/g`
                     Search/Replace \*
+* `:command`        All other commands will be passed to WeeChat (e.g.
+                    ':script …' is equivalent to '/script …').
 
 \* Supports regex (check docs for the Python re module for more
 information). `&` in the replacement is also substituted by the pattern. If
@@ -122,7 +130,8 @@ the `g` flag isn't present, only the first match will be substituted.
                     yank operator, I/p. Other fixes and improvements. The
                     Escape key should work flawlessly on WeeChat ≥ 0.4.4.
 * version 0.4:      added: f, F, t, T, r, R, W, E, B, gt, gT, J, K, ge, gE, X,
-                    ~, ^^, ^Wh, ^Wj, ^Wk, ^Wl, ^W=, ^Wx, ^Ws, ^Wv, ^Wq, :!cmd.
+                    ~, ,, ;, ^^, ^Wh, ^Wj, ^Wk, ^Wl, ^W=, ^Wx, ^Ws, ^Wv, ^Wq,
+                    :!cmd, :sp, :vsp.
                     Improved substitutions (:s/foo/bar). Rewrote key handling
                     logic to take advantage of WeeChat API additions.
                     Many fixes and improvements. WeeChat ≥ 1.0.0 required.

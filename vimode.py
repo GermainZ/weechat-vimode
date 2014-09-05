@@ -101,6 +101,9 @@ T{com}{{char}}{reset}     Till after {com}[count]{reset}'th occurence of \
 x           Delete {com}[count]{reset} characters under and after the cursor.
 X           Delete {com}[count]{reset} characters before the cursor.
 ~           Switch case of the character under the cursor.
+;           Repeat latest f, t, F or T {com}[count]{reset} times.
+,           Repeat latest f, t, F or T in opposite direction \
+{com}[count]{reset} in opposite times.
 r{com}{{count}}{reset}    Replace {com}[count]{reset} characters with \
 {com}{{count}}{reset} under and after the cursor.
 R           Enter Replace mode. Counts are not supported.
@@ -138,14 +141,18 @@ G           Goto line {com}[count]{reset}, default last line. {note}
 
 {header}Current commands:
 :h                  Help ({bold}/help{reset})
-:set                Set WeeChat config option ({bold}/set{reset})
 :q                  Closes current buffer ({bold}/close{reset})
 :qall               Exits WeeChat ({bold}/exit{reset})
 :w                  Saves settings ({bold}/save{reset})
+:sp                 Split current window in two ({bold}/window splith{reset}).
+:vsp                Split current window in two, but vertically \
+({bold}/window splitv{reset}).
 :!{com}{{cmd}}{reset}             Execute shell command ({bold}/exec -buffer \
 shell{reset})
 :s/pattern/repl
 :s/pattern/repl/g   Search/Replace {note}
+:command            All other commands will be passed to WeeChat \
+(e.g. ':script …' is equivalent to '/script …').
 {note} Supports regex (check docs for the Python re module for more \
 information). '&' in the replacement is also substituted by the pattern. If \
 the 'g' flag isn't present, only the first match will be substituted.
@@ -159,7 +166,8 @@ key bindings and commands.
 handling. Added yank operator, I/p. Other fixes and improvements. The Escape \
 key should work flawlessly on WeeChat ≥ 0.4.4.
 {header2}version 0.4:{reset}   added: f, F, t, T, r, R, W, E, B, gt, gT, J, \
-K, ge, gE, X, ~, ^^, ^Wh, ^Wj, ^Wk, ^Wl, ^W=, ^Wx, ^Ws, ^Wv, ^Wq, :!cmd. \
+K, ge, gE, X, ~, ,, ;, ^^, ^Wh, ^Wj, ^Wk, ^Wl, ^W=, ^Wx, ^Ws, ^Wv, ^Wq, :!cmd, \
+:sp, :vsp. \
 Improved substitutions (:s/foo/bar). Rewrote key handling logic to take \
 advantage of WeeChat API additions. Many fixes and improvements. \
 WeeChat ≥ 1.0.0 required.
