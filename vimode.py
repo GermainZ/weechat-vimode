@@ -197,7 +197,7 @@ REGEX_MOTION_CARRET = re.compile(r"\S")
 # Some common vi Ex commands.
 # Others may be present in cb_exec_cmd(…).
 VI_COMMANDS = {'h': "/help", 'qall': "/exit", 'q': "/close", 'w': "/save",
-               'set': "/set"}
+               'set': "/set", 'sp': "/window splith", 'vsp': "/window splitv"}
 
 def get_pos(data, regex, cur, ignore_zero=False, count=0):
     """Return the position of a regex pattern match in data, starting at cur.
