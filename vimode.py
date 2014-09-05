@@ -801,12 +801,14 @@ def cb_key_pressed(data, signal, signal_data):
 
 def cb_check_esc(data, remaining_calls):
     """Check if the Esc key was pressed and change the mode accordingly."""
-    global esc_pressed, vi_buffer, catching_keys_data
+    global esc_pressed, vi_buffer, cmd_text, catching_keys_data
     if last_signal_time == float(data):
         esc_pressed += 1
         set_mode("NORMAL")
         # Cancel any current partial commands.
         vi_buffer = ''
+        cmd_text = ''
+        weechat.command('', "/bar hide vi_cmd")
         catching_keys_data = {'amount': 0}
         weechat.bar_item_update("vi_buffer")
     return weechat.WEECHAT_RC_OK
