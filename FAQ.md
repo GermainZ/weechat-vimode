@@ -35,3 +35,13 @@ You have a few choices to solve this:
 To remove the conflicting key bindings and add recommended key bindings,
 you can run the `/vimode bind_keys` command inside WeeChat. To only list
 changes, run `/vimode bind_keys --list` instead.
+
+# Esc key not being detected instantly
+This can happen if you're using a terminal multiplexer, such as tmux or screen.
+You can decrease (or remove) the time your multiplexer waits to determine
+input key sequences to fix this.
+
+* tmux: set `escape-time` to 0 (e.g. `tmux set-option escape-time 0`, or add
+`set -sg escape-time 0` to your `.tmux.conf` file).
+* screen: set `maptimeout` to 0 (e.g. `C-a :` followed by `maptimeout 0`, or
+add `maptimeout 0` to your `.screenrc`).

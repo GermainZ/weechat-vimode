@@ -31,6 +31,7 @@ SCRIPT_DESC = ("Add vi/vim-like modes and keybindings to WeeChat.")
 import weechat
 import re
 import time
+import os
 from subprocess import Popen, PIPE
 from StringIO import StringIO
 from csv import reader
@@ -1146,8 +1147,16 @@ if problematic_keybindings:
                       " or only list them with /vimode bind_keys --list" %
                       weechat.color("red")))
     weechat.prnt('', ("%sFor help, see: https://github.com/GermainZ/weechat-"
-                      "vimode/blob/master/FAQ.md" % weechat.color("red")))
+                      "vimode/blob/master/FAQ#problematic-key-bindings.md"
+                      % weechat.color("red")))
+    weechat.prnt('', '')
 del problematic_keybindings
+
+# Warn tmux/screen users about possible Esc detection delays.
+if "STY" in os.environ.keys() or "TMUX" in os.environ.keys():
+    weechat.prnt('', ("%stmux/screen users, see: https://github.com/GermainZ/"
+                      "weechat-vimode/blob/master/FAQ.md#esc-key-not-being-"
+                      "detected-instantly" % weechat.color("red")))
 
 # Create bar items and setup hooks.
 weechat.bar_item_new("mode_indicator", "cb_mode_indicator", '')
