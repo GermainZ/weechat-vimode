@@ -205,6 +205,15 @@ REGEX_MOTION_UPPERCASE_B = re.compile(r"\w\b(?!\S)")
 REGEX_MOTION_GE = re.compile(r"\b\w|[^\w ]")
 REGEX_MOTION_CARRET = re.compile(r"\S")
 
+# Regex used to detect problematic keybindings.
+# For example: meta-wmeta-s is bound by default to /window swap.
+#    If the user pressed Esc-w, WeeChat will detect it as meta-w and will not
+#    send any signal to cb_key_combo_default just yet, since it's the beginning
+#    of a known key combo.
+#    Instead, cb_key_combo_default will receive the Esc-ws signal, which
+#    becomes "ws" after removing the Esc part, and won't know how to handle it.
+REGEX_PROBLEMATIC_KEYBINDINGS = r"meta-\w(meta|ctrl)"
+
 # Some common vi Ex commands.
 # Others may be present in cb_exec_cmd(…).
 VI_COMMANDS = {'h': "/help", 'qall': "/exit", 'q': "/close", 'w': "/save",
@@ -1099,7 +1108,7 @@ def cb_vimode_cmd(data, buf, args):
                     "/key bind ctrl-Wq /window merge"]
         while weechat.infolist_next(infolist):
             key = weechat.infolist_string(infolist, "key")
-            if re.match(r"meta-\wmeta-", key):
+            if re.match(REGEX_PROBLEMATIC_KEYBINDINGS, key):
                 commands.append("/key unbind %s" % key)
         if args == "bind_keys":
             weechat.prnt('', "Running commands:")
@@ -1121,19 +1130,13 @@ if int(VERSION) < 0x01000000:
                       " versions are not supported." % weechat.color("red")))
 
 # Warn the user about problematic key bindings that may conflict with vimode.
-# For example: meta-wmeta-s is bound by default to /window swap.
-#    If the user pressed Esc-w, WeeChat will detect it as meta-w and will not
-#    send any signal to cb_key_combo_default just yet, since it's the beginning
-#    of a known key combo.
-#    Instead, cb_key_combo_default will receive the Esc-ws signal, which
-#    becomes "ws" after removing the Esc part, and won't know how to handle it.
 # The solution is to remove these key bindings, but that's up to the user.
 infolist = weechat.infolist_get("key", '', "default")
 problematic_keybindings = []
 while weechat.infolist_next(infolist):
     key = weechat.infolist_string(infolist, "key")
     command = weechat.infolist_string(infolist, "command")
-    if re.match(r"meta-\wmeta-", key):
+    if re.match(REGEX_PROBLEMATIC_KEYBINDINGS, key):
         problematic_keybindings.append("%s -> %s" % (key, command))
 if problematic_keybindings:
     weechat.prnt('', ("%sProblematic keybindings detected:" %
