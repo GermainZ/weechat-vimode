@@ -21,12 +21,6 @@
 # For the full help, type `/vimode` inside WeeChat.
 #
 
-SCRIPT_NAME = "vimode"
-SCRIPT_AUTHOR = "GermainZ <germanosz@gmail.com>"
-SCRIPT_VERSION = "0.4"
-SCRIPT_LICENSE = "GPL3"
-SCRIPT_DESC = ("Add vi/vim-like modes and keybindings to WeeChat.")
-
 
 import weechat
 import re
@@ -37,8 +31,11 @@ from StringIO import StringIO
 from csv import reader
 
 
-weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
-                 SCRIPT_DESC, '', '')
+SCRIPT_NAME = "vimode"
+SCRIPT_AUTHOR = "GermainZ <germanosz@gmail.com>"
+SCRIPT_VERSION = "0.4"
+SCRIPT_LICENSE = "GPL3"
+SCRIPT_DESC = ("Add vi/vim-like modes and keybindings to WeeChat.")
 
 
 # Type '/vimode' in WeeChat to view this help formatted text.
@@ -199,7 +196,7 @@ last_search_motion = {'motion': None, 'data': None}
 vimode_settings = {'no_warn': ("off", "don't warn about problematic"
                                       "keybindings and tmux/screen")}
 
-# Regex patterns for some motions
+# Regex patterns for some motions.
 REGEX_MOTION_LOWERCASE_W = re.compile(r"\b\w|[^\w ]")
 REGEX_MOTION_UPPERCASE_W = re.compile(r"(?<!\S)\b\w")
 REGEX_MOTION_LOWERCASE_E = re.compile(r"\w\b|[^\w ]")
@@ -233,7 +230,7 @@ def get_pos(data, regex, cur, ignore_zero=False, count=0):
                    character in data (default False)
     count -- the index of the match (default 0 for the first match)
     """
-    # List of the *positions* of the found patterns
+    # List of the *positions* of the found patterns.
     matches = [m.start() for m in re.finditer(regex, data[cur:])]
     pos = 0
     if count:
@@ -791,7 +788,7 @@ VI_MOTIONS = ['w', 'e', 'b', '^', '$', 'h', 'l', '0', 'W', 'E', 'B', 'f', 'F',
               't', 'T', 'ge', 'gE']
 # Special characters for motions. The corresponding function's name is
 # converted before calling. For example, '^' will call 'motion_carret' instead
-# of 'motion_^' (which isn't allowed because of illegal characters.)
+# of 'motion_^' (which isn't allowed because of illegal characters).
 SPECIAL_CHARS = {'^': "carret", '$': "dollar", '~': "tilda", ';': "semicolon",
                  ',': "comma"}
 
@@ -820,11 +817,11 @@ def cb_exec_cmd(data, remaining_calls):
     """Translate and execute our custom commands to WeeChat command, with
     any passed arguments.
     """
-    # Process the entered command
+    # Process the entered command.
     data = list(data)
     del data[0]
     data = ''.join(data)
-    # s/foo/bar command
+    # s/foo/bar command.
     if data.startswith("s/"):
         cmd = data
         parsed_cmd = next(reader(StringIO(cmd), delimiter='/',
@@ -842,10 +839,10 @@ def cb_exec_cmd(data, remaining_calls):
         input_line = weechat.buffer_get_string(buf, 'input')
         input_line = re.sub(pattern, repl, input_line, count)
         weechat.buffer_set(buf, "input", input_line)
-    # Shell command
+    # Shell command.
     elif data.startswith('!'):
         weechat.command('', "/exec -buffer shell %s" % data[1:])
-    # Check againt defined commands
+    # Check againt defined commands.
     else:
         data = data.split(' ', 1)
         cmd = data[0]
@@ -906,11 +903,11 @@ def cb_key_combo_default(data, signal, signal_data):
     keys = signal_data
     if esc_pressed and keys.startswith("\x01[" * esc_pressed):
         keys = keys[2*esc_pressed:]
-        # Multiples of 3 seem to "cancel" themselves
+        # Multiples of 3 seem to "cancel" themselves,
         # e.g. Esc-Esc-Esc-Alt-j-11 is detected as "\x01[\x01[\x01" followed by
         # "\x01[j11" (two different signals).
         if signal_data == "\x01[" * 3:
-            esc_pressed = -1 # Because cb_check_esc will increment it to 0
+            esc_pressed = -1 # Because cb_check_esc will increment it to 0.
         else:
             esc_pressed = 0
     elif keys == "\x01@":
@@ -1181,42 +1178,43 @@ def check_warnings():
                          " plugins.var.python.vimode.no_warn to 'on'" %
                          weechat.color("red"))
 
-
-# Warn the user if he's using an unsupported WeeChat version
-VERSION = weechat.info_get("version_number", '')
-if int(VERSION) < 0x01000000:
-    weechat.prnt('', ("%svimode: please upgrade to WeeChat ≥ 1.0.0. Previous"
-                      " versions are not supported." % weechat.color("red")))
-
-# Set up script options.
-for option, value in vimode_settings.items():
-    if weechat.config_is_set_plugin(option):
-        vimode_settings[option] = weechat.config_get_plugin(option)
-    else:
-        weechat.config_set_plugin(option, value[0])
-        vimode_settings[option] = value[0]
-    weechat.config_set_desc_plugin(option, "%s (default: \"%s\")" % (value[1],
-                                                                     value[0]))
-
-# Warn the user about possible problems if necessary.
-if not weechat.config_string_to_boolean(vimode_settings['no_warn']):
-    check_warnings()
-
-# Create bar items and setup hooks.
-weechat.bar_item_new("mode_indicator", "cb_mode_indicator", '')
-weechat.bar_item_new("cmd_text", "cb_cmd_text", '')
-weechat.bar_item_new("vi_buffer", "cb_vi_buffer", '')
-vi_cmd = weechat.bar_new("vi_cmd", "off", "0", "root", '', "bottom",
-                         "vertical", "vertical", "0", "0", "default",
-                         "default", "default", "0", "cmd_text")
-weechat.hook_config('plugins.var.python.%s.*' % SCRIPT_NAME, 'cb_config', '')
-weechat.hook_signal("key_pressed", "cb_key_pressed", '')
-weechat.hook_signal("key_combo_default", "cb_key_combo_default", '')
-
-weechat.hook_command("vimode", SCRIPT_DESC, "[help | bind_keys [--list]]",
-                     "     help: show help\n"
-                     "bind_keys: unbind problematic keys, and bind recommended"
-                     " keys to use in WeeChat\n"
-                     "          --list: only list changes",
-                     "help || bind_keys |--list",
-                     "cb_vimode_cmd", '')
+if __name__ == '__main__':
+    weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
+                     SCRIPT_DESC, '', '')
+    # Warn the user if he's using an unsupported WeeChat version.
+    VERSION = weechat.info_get("version_number", '')
+    if int(VERSION) < 0x01000000:
+        weechat.prnt('', ("%svimode: please upgrade to WeeChat ≥ 1.0.0."
+                          " Previous versions are not supported."
+                          % weechat.color("red")))
+    # Set up script options.
+    for option, value in vimode_settings.items():
+        if weechat.config_is_set_plugin(option):
+            vimode_settings[option] = weechat.config_get_plugin(option)
+        else:
+            weechat.config_set_plugin(option, value[0])
+            vimode_settings[option] = value[0]
+        weechat.config_set_desc_plugin(option,
+                                       "%s (default: \"%s\")" % (value[1],
+                                                                 value[0]))
+    # Warn the user about possible problems if necessary.
+    if not weechat.config_string_to_boolean(vimode_settings['no_warn']):
+        check_warnings()
+    # Create bar items and setup hooks.
+    weechat.bar_item_new("mode_indicator", "cb_mode_indicator", '')
+    weechat.bar_item_new("cmd_text", "cb_cmd_text", '')
+    weechat.bar_item_new("vi_buffer", "cb_vi_buffer", '')
+    vi_cmd = weechat.bar_new("vi_cmd", "off", "0", "root", '', "bottom",
+                             "vertical", "vertical", "0", "0", "default",
+                             "default", "default", "0", "cmd_text")
+    weechat.hook_config('plugins.var.python.%s.*' % SCRIPT_NAME, 'cb_config',
+                        '')
+    weechat.hook_signal("key_pressed", "cb_key_pressed", '')
+    weechat.hook_signal("key_combo_default", "cb_key_combo_default", '')
+    weechat.hook_command("vimode", SCRIPT_DESC, "[help | bind_keys [--list]]",
+                         "     help: show help\n"
+                         "bind_keys: unbind problematic keys, and bind"
+                         " recommended keys to use in WeeChat\n"
+                         "          --list: only list changes",
+                         "help || bind_keys |--list",
+                         "cb_vimode_cmd", '')
