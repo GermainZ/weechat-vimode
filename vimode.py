@@ -195,6 +195,10 @@ catching_keys_data = {'amount': 0}
 # Used for ; and , to store the last f/F/t/T motion.
 last_search_motion = {'motion': None, 'data': None}
 
+# Script options.
+vimode_settings = {'no_warn': ("off", "don't warn about problematic"
+                                      "keybindings and tmux/screen")}
+
 # Regex patterns for some motions
 REGEX_MOTION_LOWERCASE_W = re.compile(r"\b\w|[^\w ]")
 REGEX_MOTION_UPPERCASE_W = re.compile(r"(?<!\S)\b\w")
@@ -1094,6 +1098,7 @@ def cb_vimode_cmd(data, buf, args):
         weechat.prnt(help_buf, HELP_TEXT)
         weechat.command(help_buf, "/window scroll_top")
     elif args.startswith("bind_keys"):
+        infolist = weechat.infolist_get("key", '', "default")
         weechat.infolist_reset_item_cursor(infolist)
         commands = ["/key unbind ctrl-W",
                     "/key bind ctrl-^ /input jump_last_buffer",
@@ -1122,6 +1127,60 @@ def cb_vimode_cmd(data, buf, args):
             weechat.prnt('', "Done.")
     return weechat.WEECHAT_RC_OK
 
+# Other callbacks/methods.
+def cb_config(data, option, value):
+    """Called when a script option is changed."""
+    option_name = option.split('.')[-1]
+    if option_name in vimode_settings:
+        vimode_settings[option_name] = value
+    return weechat.WEECHAT_RC_OK
+
+def check_warnings():
+    """Warn the user about problematic key bindings and tmux/screen."""
+    user_warned = False
+    # Warn the user about problematic key bindings that may conflict with
+    # vimode.
+    # The solution is to remove these key bindings, but that's up to the user.
+    infolist = weechat.infolist_get("key", '', "default")
+    problematic_keybindings = []
+    while weechat.infolist_next(infolist):
+        key = weechat.infolist_string(infolist, "key")
+        command = weechat.infolist_string(infolist, "command")
+        if re.match(REGEX_PROBLEMATIC_KEYBINDINGS, key):
+            problematic_keybindings.append("%s -> %s" % (key, command))
+    if problematic_keybindings:
+        user_warned = True
+        weechat.prnt('', ("%sProblematic keybindings detected:" %
+                          weechat.color("red")))
+        for keybinding in problematic_keybindings:
+            weechat.prnt('', "%s    %s" % (weechat.color("red"), keybinding))
+        weechat.prnt('', ("%sThese keybindings may conflict with vimode." %
+                          weechat.color("red")))
+        weechat.prnt('', ("%sYou can remove problematic key bindings and add"
+                          " recommended ones by using /vimode bind_keys,"
+                          " or only list them with /vimode bind_keys --list" %
+                          weechat.color("red")))
+        weechat.prnt('', ("%sFor help, see: https://github.com/GermainZ/weechat"
+                          "-vimode/blob/master/FAQ#problematic-key-bindings.md"
+                          % weechat.color("red")))
+    del problematic_keybindings
+    # Warn tmux/screen users about possible Esc detection delays.
+    if "STY" in os.environ.keys() or "TMUX" in os.environ.keys():
+        if user_warned:
+            weechat.prnt('', '')
+        user_warned = True
+        weechat.prnt('', ("%stmux/screen users, see: https://github.com/"
+                          "GermainZ/weechat-vimode/blob/master/FAQ.md#esc-key-"
+                          "not-being-detected-instantly" %
+                          weechat.color("red")))
+    if (user_warned and not
+            weechat.config_string_to_boolean(vimode_settings['no_warn'])):
+        if user_warned:
+            weechat.prnt('', '')
+        weechat.prnt('', "%sTo force disable warnings, you can set"
+                         " plugins.var.python.vimode.no_warn to 'on'" %
+                         weechat.color("red"))
+
 
 # Warn the user if he's using an unsupported WeeChat version
 VERSION = weechat.info_get("version_number", '')
@@ -1129,37 +1188,19 @@ if int(VERSION) < 0x01000000:
     weechat.prnt('', ("%svimode: please upgrade to WeeChat ≥ 1.0.0. Previous"
                       " versions are not supported." % weechat.color("red")))
 
-# Warn the user about problematic key bindings that may conflict with vimode.
-# The solution is to remove these key bindings, but that's up to the user.
-infolist = weechat.infolist_get("key", '', "default")
-problematic_keybindings = []
-while weechat.infolist_next(infolist):
-    key = weechat.infolist_string(infolist, "key")
-    command = weechat.infolist_string(infolist, "command")
-    if re.match(REGEX_PROBLEMATIC_KEYBINDINGS, key):
-        problematic_keybindings.append("%s -> %s" % (key, command))
-if problematic_keybindings:
-    weechat.prnt('', ("%sProblematic keybindings detected:" %
-                      weechat.color("red")))
-    for keybinding in problematic_keybindings:
-        weechat.prnt('', "%s    %s" % (weechat.color("red"), keybinding))
-    weechat.prnt('', ("%sThese keybindings may conflict with vimode." %
-                      weechat.color("red")))
-    weechat.prnt('', ("%sYou can remove problematic key bindings and add"
-                      " recommended ones by using /vimode bind_keys,"
-                      " or only list them with /vimode bind_keys --list" %
-                      weechat.color("red")))
-    weechat.prnt('', ("%sFor help, see: https://github.com/GermainZ/weechat-"
-                      "vimode/blob/master/FAQ#problematic-key-bindings.md"
-                      % weechat.color("red")))
-    weechat.prnt('', '')
-del problematic_keybindings
+# Set up script options.
+for option, value in vimode_settings.items():
+    if weechat.config_is_set_plugin(option):
+        vimode_settings[option] = weechat.config_get_plugin(option)
+    else:
+        weechat.config_set_plugin(option, value[0])
+        vimode_settings[option] = value[0]
+    weechat.config_set_desc_plugin(option, "%s (default: \"%s\")" % (value[1],
+                                                                     value[0]))
 
-# Warn tmux/screen users about possible Esc detection delays.
-if "STY" in os.environ.keys() or "TMUX" in os.environ.keys():
-    weechat.prnt('', ("%stmux/screen users, see: https://github.com/GermainZ/"
-                      "weechat-vimode/blob/master/FAQ.md#esc-key-not-being-"
-                      "detected-instantly" % weechat.color("red")))
+# Warn the user about possible problems if necessary.
+if not weechat.config_string_to_boolean(vimode_settings['no_warn']):
+    check_warnings()
 
 # Create bar items and setup hooks.
 weechat.bar_item_new("mode_indicator", "cb_mode_indicator", '')
@@ -1168,6 +1209,7 @@ weechat.bar_item_new("vi_buffer", "cb_vi_buffer", '')
 vi_cmd = weechat.bar_new("vi_cmd", "off", "0", "root", '', "bottom",
                          "vertical", "vertical", "0", "0", "default",
                          "default", "default", "0", "cmd_text")
+weechat.hook_config('plugins.var.python.%s.*' % SCRIPT_NAME, 'cb_config', '')
 weechat.hook_signal("key_pressed", "cb_key_pressed", '')
 weechat.hook_signal("key_combo_default", "cb_key_combo_default", '')
 
