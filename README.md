@@ -1,5 +1,3 @@
-You can view this help text inside WeeChat by typing `/vimode`
-
 # Description:
 Add vi/vim-like modes and keybindings to WeeChat.
 
