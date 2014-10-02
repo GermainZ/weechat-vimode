@@ -67,10 +67,10 @@ for example: ":h" or ":s/foo/bar".
 * `R`               Enter Replace mode. Counts are not supported.
 * `dd`              Delete line.
 * `cc`              Delete line and start insert.
-* `yy`              Yank line to clipboard. Requires xsel.
+* `yy`              Yank line to clipboard. Requires xclip.
 * `I`               Insert text before the first non-blank in the line.
 * `p`               Put the text from the clipboard after the cursor. Requires
-                    xsel.
+                    xclip.
 
 ## Buffers:
 * `j`               Scroll buffer up. \*

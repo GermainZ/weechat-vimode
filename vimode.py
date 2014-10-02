@@ -258,7 +258,8 @@ def operator_y(buf, input_line, pos1, pos2, _):
     """
     start = min(pos1, pos2)
     end = max(pos1, pos2)
-    proc = subprocess.Popen(['xsel', '-bi'], stdin=subprocess.PIPE)
+    proc = subprocess.Popen(['xclip', '-selection', 'c'],
+                            stdin=subprocess.PIPE)
     proc.communicate(input=input_line[start:end])
 
 
@@ -555,7 +556,8 @@ def key_yy(buf, input_line, cur, count):
     See Also:
         `key_base()`.
     """
-    proc = subprocess.Popen(['xsel', '-bi'], stdin=subprocess.PIPE)
+    proc = subprocess.Popen(['xclip', '-selection', 'c'],
+                            stdin=subprocess.PIPE)
     proc.communicate(input=input_line)
 
 def key_i(buf, input_line, cur, count):
