@@ -123,7 +123,7 @@ VI_OPERATORS = ['c', 'd', 'y']
 # "motion_X" where X is the motion (e.g. `motion_w()`).
 # See Also: `SPECIAL_CHARS`.
 VI_MOTIONS = ['w', 'e', 'b', '^', '$', 'h', 'l', 'W', 'E', 'B', 'f', 'F', 't',
-              'T', 'ge', 'gE']
+              'T', 'ge', 'gE', '0']
 
 # Special characters for motions. The corresponding function's name is
 # converted before calling. For example, '^' will call `motion_carret` instead
@@ -265,6 +265,14 @@ def operator_y(buf, input_line, pos1, pos2, _):
 
 # Motions:
 # --------
+
+def motion_0(input_line, cur, count):
+    """Go to the first character of the line.
+
+    See Also;
+        `motion_base()`.
+    """
+    return 0, False
 
 def motion_w(input_line, cur, count):
     """Go `count` words forward and return position.
@@ -737,7 +745,6 @@ VI_KEYS = {'j': "/window scroll_down",
            'I': key_I,
            'yy': key_yy,
            'p': "/input clipboard_paste",
-           '0': "/input move_beginning_of_line",
            '/': "/input search_text",
            'gt': "/buffer +1",
            'K': "/buffer +1",
