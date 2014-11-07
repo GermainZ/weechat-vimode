@@ -957,6 +957,26 @@ def cb_key_combo_default(data, signal, signal_data):
     if not match:
         for operator in VI_OPERATORS:
             if vi_keys.startswith(operator):
+                # Check for counts before the motion (but after the operator).
+                vi_keys_no_op = vi_keys[len(operator):]
+                # There's no motion yet.
+                if vi_keys_no_op.isdigit():
+                    match = True
+                    break
+                # Get the motion count, then multiply the operator count by
+                # it similar to vim.
+                elif vi_keys_no_op and vi_keys_no_op[0].isdigit():
+                    motion_count = ''
+                    for char in vi_keys_no_op:
+                        if char.isdigit():
+                            motion_count += char
+                        else:
+                            break
+                    # Remove counts from `vi_keys_no_op`.
+                    vi_keys = vi_keys.replace(motion_count, '', 1)
+                    motion_count = int(motion_count)
+                    count *= motion_count
+                # Check against defined motions.
                 for motion in VI_MOTIONS:
                     if motion.startswith(vi_keys[1:]):
                         match = True
