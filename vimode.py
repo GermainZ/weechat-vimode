@@ -925,71 +925,13 @@ def cb_key_combo_default(data, signal, signal_data):
     if not vi_buffer:
         return weechat.WEECHAT_RC_OK
 
-    # Keys without the count. These are the actual keys we should handle.
-    # The count, if any, will be removed from vi_keys just below.
-    # After that, vi_buffer is only used for display purposes — only vi_keys is
-    # checked for all the handling.
-    vi_keys = vi_buffer
-
-    # Look for a potential match (e.g. 'd' might become 'dw' or 'dd' so we
-    # accept it, but 'd9' is invalid).
+    # Check if the keys have a (partial or full) match. If so, also get the
+    # keys without the count. (These are the actual keys we should handle.)
+    # After that, `vi_buffer` is only used for display purposes — only
+    # `vi_keys` is checked for all the handling.
     # If no matches are found, the keys buffer is cleared.
-    match = False
-    # Digits are allowed at the beginning (counts or '0').
-    count = 1
-    if vi_buffer.isdigit():
-        match = True
-    elif vi_buffer and vi_buffer[0].isdigit():
-        count = ''
-        for char in vi_buffer:
-            if char.isdigit():
-                count += char
-            else:
-                break
-        vi_keys = vi_buffer.replace(count, '', 1)
-        count = int(count)
-    # Check against defined keys.
-    if not match:
-        for key in VI_KEYS:
-            if key.startswith(vi_keys):
-                match = True
-                break
-    # Check against defined motions.
-    if not match:
-        for motion in VI_MOTIONS:
-            if motion.startswith(vi_keys):
-                match = True
-                break
-    # Check against defined operators + motions.
-    if not match:
-        for operator in VI_OPERATORS:
-            if vi_keys.startswith(operator):
-                # Check for counts before the motion (but after the operator).
-                vi_keys_no_op = vi_keys[len(operator):]
-                # There's no motion yet.
-                if vi_keys_no_op.isdigit():
-                    match = True
-                    break
-                # Get the motion count, then multiply the operator count by
-                # it similar to vim.
-                elif vi_keys_no_op and vi_keys_no_op[0].isdigit():
-                    motion_count = ''
-                    for char in vi_keys_no_op:
-                        if char.isdigit():
-                            motion_count += char
-                        else:
-                            break
-                    # Remove counts from `vi_keys_no_op`.
-                    vi_keys = vi_keys.replace(motion_count, '', 1)
-                    motion_count = int(motion_count)
-                    count *= motion_count
-                # Check against defined motions.
-                for motion in VI_MOTIONS:
-                    if motion.startswith(vi_keys[1:]):
-                        match = True
-                        break
-    # No match found — clear the keys buffer.
-    if not match:
+    matched, vi_keys, count = get_keys_and_count(vi_buffer)
+    if not matched:
         vi_buffer = ''
         return weechat.WEECHAT_RC_OK_EAT
 
@@ -1249,6 +1191,77 @@ def start_catching_keys(amount, callback, input_line, cur, count, buf=None):
                            'new_cur': 0,
                            'buf': buf})
     return cur, False
+
+def get_keys_and_count(combo):
+    """Check if `combo` is a valid combo and extract keys/counts if so.
+
+    Args:
+        combo (str): pressed keys combo.
+
+    Returns:
+        matched (bool): True if the combo has a (partial or full) match, False
+            otherwise.
+        combo (str): `combo` with the count removed. These are the actual keys
+            we should handle.
+        count (int): count for `combo`.
+    """
+    # Look for a potential match (e.g. 'd' might become 'dw' or 'dd' so we
+    # accept it, but 'd9' is invalid).
+    matched = False
+    # Digits are allowed at the beginning (counts or '0').
+    count = 1
+    if combo.isdigit():
+        matched = True
+    elif combo and combo[0].isdigit():
+        count = ''
+        for char in combo:
+            if char.isdigit():
+                count += char
+            else:
+                break
+        combo = combo.replace(count, '', 1)
+        count = int(count)
+    # Check against defined keys.
+    if not matched:
+        for key in VI_KEYS:
+            if key.startswith(combo):
+                matched = True
+                break
+    # Check against defined motions.
+    if not matched:
+        for motion in VI_MOTIONS:
+            if motion.startswith(combo):
+                matched = True
+                break
+    # Check against defined operators + motions.
+    if not matched:
+        for operator in VI_OPERATORS:
+            if combo.startswith(operator):
+                # Check for counts before the motion (but after the operator).
+                vi_keys_no_op = combo[len(operator):]
+                # There's no motion yet.
+                if vi_keys_no_op.isdigit():
+                    matched = True
+                    break
+                # Get the motion count, then multiply the operator count by
+                # it, similar to vim's behavior.
+                elif vi_keys_no_op and vi_keys_no_op[0].isdigit():
+                    motion_count = ''
+                    for char in vi_keys_no_op:
+                        if char.isdigit():
+                            motion_count += char
+                        else:
+                            break
+                    # Remove counts from `vi_keys_no_op`.
+                    combo = combo.replace(motion_count, '', 1)
+                    motion_count = int(motion_count)
+                    count *= motion_count
+                # Check against defined motions.
+                for motion in VI_MOTIONS:
+                    if motion.startswith(combo[1:]):
+                        matched = True
+                        break
+    return matched, combo, count
 
 
 # Other helpers.
