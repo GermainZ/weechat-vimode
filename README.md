@@ -105,6 +105,11 @@ for example: ":h" or ":s/foo/bar".
 * `:q`              Closes current buffer (`/close`)
 * `:qall`           Exits WeeChat (`/exit`)
 * `:w`              Saves settings (`/save`)
+* `:bp`             Go to the previous buffer (`/buffer -1`).
+* `:bn`             Go to the next buffer (`/buffer +1`).
+* `:bd`             Close the current buffer (`/close`).
+* `:b#`             Go to the last buffer (`/input jump_last_buffer`).
+* `:b [N]`          Go to buffer [N].
 * `:sp`             Split current window in two (`/window splith`).
 * `:vsp`            Split current window in two, but vertically
                     (`/window splitv`).

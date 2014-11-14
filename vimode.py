@@ -104,6 +104,11 @@ VI_COMMANDS = {'h': "/help",
                'q': "/close",
                'w': "/save",
                'set': "/set",
+               'bp': "/buffer -1",
+               'bn': "/buffer +1",
+               'bd': "/close",
+               'b#': "/input jump_last_buffer",
+               'b': "/buffer",
                'sp': "/window splith",
                'vsp': "/window splitv"}
 
