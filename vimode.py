@@ -948,7 +948,7 @@ def cb_key_combo_default(data, signal, signal_data):
     # WeeChat command. Otherwise, it's a method we'll call.
     if vi_keys in VI_KEYS:
         if isinstance(VI_KEYS[vi_keys], str):
-            for _ in range(count):
+            for _ in range(max(count, 1)):
                 # This is to avoid crashing WeeChat on script reloads/unloads,
                 # because no hooks must still be running when a script is
                 # reloaded or unloaded.
@@ -1214,7 +1214,7 @@ def get_keys_and_count(combo):
     # accept it, but 'd9' is invalid).
     matched = False
     # Digits are allowed at the beginning (counts or '0').
-    count = 1
+    count = 0
     if combo.isdigit():
         matched = True
     elif combo and combo[0].isdigit():
@@ -1260,7 +1260,7 @@ def get_keys_and_count(combo):
                     # Remove counts from `vi_keys_no_op`.
                     combo = combo.replace(motion_count, '', 1)
                     motion_count = int(motion_count)
-                    count *= motion_count
+                    count = max(count, 1) * motion_count
                 # Check against defined motions.
                 for motion in VI_MOTIONS:
                     if motion.startswith(combo[1:]):
