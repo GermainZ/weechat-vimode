@@ -617,8 +617,8 @@ def key_G(buf, input_line, cur, count):
     """
     if count > 0:
         # This is necessary to prevent weird scroll jumps.
-        weechat.command('', "/window scroll_bottom")
-        weechat.command('', "/window scroll %s" % count)
+        weechat.command('', "/window scroll_top")
+        weechat.command('', "/window scroll %s" % (count - 1))
     else:
         weechat.command('', "/window scroll_bottom")
 
