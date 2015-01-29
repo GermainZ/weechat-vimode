@@ -385,7 +385,7 @@ def motion_h(input_line, cur, count):
     See Also:
         `motion_base()`.
     """
-    return max(0, cur - count), False
+    return max(0, cur - max(count, 1)), False
 
 def motion_l(input_line, cur, count):
     """Go `count` characters to the right and return position.
@@ -393,7 +393,7 @@ def motion_l(input_line, cur, count):
     See Also:
         `motion_base()`.
     """
-    return cur + count, False
+    return cur + max(count, 1), False
 
 def motion_carret(input_line, cur, count):
     """Go to first non-blank character of line and return position.
@@ -471,7 +471,7 @@ def cb_motion_F(update_last=True):
                   cur,
                   True,
                   catching_keys_data['count'])
-    catching_keys_data['new_cur'] = catching_keys_data['cur'] - pos
+    catching_keys_data['new_cur'] = catching_keys_data['cur'] - pos - 2
     if update_last:
         last_search_motion = {'motion': 'F', 'data': pattern}
     cb_key_combo_default(None, None, '')
