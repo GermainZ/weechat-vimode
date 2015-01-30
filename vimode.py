@@ -1011,6 +1011,32 @@ def cb_mode_indicator(data, item, window):
     """Return the current mode (INSERT/NORMAL/REPLACE)."""
     return mode
 
+def cb_line_numbers(data, item, window):
+    """Fill the line numbers bar item."""
+    bar_height = weechat.window_get_integer(window, "win_chat_height")
+    content = ''
+    for i in range(1, bar_height + 1):
+        content += "%s \n" % i
+    return content
+
+# Callbacks for the line numbers bar.
+# ...................................
+
+def cb_update_line_numbers(data, signal, signal_data):
+    """Call `cb_timer_update_line_numbers()` when switching buffers.
+
+    A timer is required because the bar item is refreshed before the new buffer
+    is actually displayed, so ``win_chat_height`` would refer to the old
+    buffer. Using a timer refreshes the item after the new buffer is displayed.
+    """
+    weechat.hook_timer(10, 0, 1, "cb_timer_update_line_numbers", '')
+    return weechat.WEECHAT_RC_OK
+
+def cb_timer_update_line_numbers(data, remaining_calls):
+    """Update the line numbers bar item."""
+    weechat.bar_item_update("line_numbers")
+    return weechat.WEECHAT_RC_OK
+
 
 # Config.
 # -------
@@ -1348,13 +1374,18 @@ if __name__ == '__main__':
     weechat.bar_item_new("mode_indicator", "cb_mode_indicator", '')
     weechat.bar_item_new("cmd_text", "cb_cmd_text", '')
     weechat.bar_item_new("vi_buffer", "cb_vi_buffer", '')
-    vi_cmd = weechat.bar_new("vi_cmd", "off", "0", "root", '', "bottom",
-                             "vertical", "vertical", "0", "0", "default",
-                             "default", "default", "0", "cmd_text")
+    weechat.bar_item_new("line_numbers", "cb_line_numbers", '')
+    weechat.bar_new("vi_cmd", "off", "0", "root", '', "bottom", "vertical",
+                    "vertical", "0", "0", "default", "default", "default", "0",
+                    "cmd_text")
+    weechat.bar_new("vi_line_numbers", "on", "0", "window", '', "left",
+                    "vertical", "vertical", "0", "0", "default", "default",
+                    "default", "0", "line_numbers")
     weechat.hook_config('plugins.var.python.%s.*' % SCRIPT_NAME, 'cb_config',
                         '')
     weechat.hook_signal("key_pressed", "cb_key_pressed", '')
     weechat.hook_signal("key_combo_default", "cb_key_combo_default", '')
+    weechat.hook_signal("buffer_switch", "cb_update_line_numbers", '')
     weechat.hook_command("vimode", SCRIPT_DESC, "[help | bind_keys [--list]]",
                          "     help: show help\n"
                          "bind_keys: unbind problematic keys, and bind"
