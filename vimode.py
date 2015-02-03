@@ -289,7 +289,7 @@ def motion_w(input_line, cur, count):
     """
     pos = get_pos(input_line, REGEX_MOTION_LOWERCASE_W, cur, True, count)
     if not pos:
-        return len(input_line), False
+        return len(input_line), False, False
     return cur + pos, False, False
 
 def motion_W(input_line, cur, count):
@@ -300,7 +300,7 @@ def motion_W(input_line, cur, count):
     """
     pos = get_pos(input_line, REGEX_MOTION_UPPERCASE_W, cur, True, count)
     if not pos:
-        return len(input_line), False
+        return len(input_line), False, False
     return cur + pos, False, False
 
 def motion_e(input_line, cur, count):
@@ -311,7 +311,7 @@ def motion_e(input_line, cur, count):
     """
     pos = get_pos(input_line, REGEX_MOTION_LOWERCASE_E, cur, True, count)
     if not pos:
-        return len(input_line), False
+        return len(input_line), False, False
     return cur + pos, True, False
 
 def motion_E(input_line, cur, count):
@@ -322,7 +322,7 @@ def motion_E(input_line, cur, count):
     """
     pos = get_pos(input_line, REGEX_MOTION_UPPERCASE_E, cur, True, count)
     if not pos:
-        return len(input_line), False
+        return len(input_line), False, False
     return cur + pos, True, False
 
 def motion_b(input_line, cur, count):
@@ -335,7 +335,7 @@ def motion_b(input_line, cur, count):
     pos = get_pos(input_line[::-1], REGEX_MOTION_LOWERCASE_B, new_cur,
                   count=count)
     if not pos:
-        return 0, False
+        return 0, False, False
     pos = len(input_line) - (pos + new_cur + 1)
     return pos, True, False
 
@@ -349,7 +349,7 @@ def motion_B(input_line, cur, count):
     pos = get_pos(input_line[::-1], REGEX_MOTION_UPPERCASE_B, new_cur,
                   count=count)
     if not pos:
-        return 0, False
+        return 0, False, False
     pos = len(input_line) - (pos + new_cur + 1)
     return pos, True, False
 
@@ -363,7 +363,7 @@ def motion_ge(input_line, cur, count):
     pos = get_pos(input_line[::-1], REGEX_MOTION_GE, new_cur,
                   count)
     if not pos:
-        return 0, False
+        return 0, False, False
     pos = len(input_line) - (pos + new_cur + 1)
     return pos, True, False
 
@@ -377,7 +377,7 @@ def motion_gE(input_line, cur, count):
     pos = get_pos(input_line[::-1], REGEX_MOTION_GE, new_cur,
                   True, count)
     if not pos:
-        return 0, False
+        return 0, False, False
     pos = len(input_line) - (pos + new_cur + 1)
     return pos, True, False
 
