@@ -76,13 +76,13 @@ vimode_settings = {'no_warn': ("off", "don't warn about problematic"
 # Regex patterns.
 # ---------------
 
-REGEX_MOTION_LOWERCASE_W = re.compile(r"\b\w|[^\w ]")
+REGEX_MOTION_LOWERCASE_W = re.compile(r"\b\S|(?<=\s)\S")
 REGEX_MOTION_UPPERCASE_W = re.compile(r"(?<=\s)\S")
 REGEX_MOTION_LOWERCASE_E = re.compile(r"\w\b|[^\w ]")
 REGEX_MOTION_UPPERCASE_E = re.compile(r"\S(?!\S)")
-REGEX_MOTION_LOWERCASE_B = re.compile(r"\w\b|[^\w ]")
-REGEX_MOTION_UPPERCASE_B = re.compile(r"\w\b(?!\S)")
-REGEX_MOTION_G_LOWERCASE_E = re.compile(r"\b\w|[^\w ]")
+REGEX_MOTION_LOWERCASE_B = re.compile(r"\S\b|[^\S ]")
+REGEX_MOTION_UPPERCASE_B = REGEX_MOTION_UPPERCASE_E
+REGEX_MOTION_G_LOWERCASE_E = re.compile(r"\b\S|[^\S ]")
 REGEX_MOTION_G_UPPERCASE_E = REGEX_MOTION_UPPERCASE_W
 REGEX_MOTION_CARRET = re.compile(r"\S")
 
@@ -441,7 +441,7 @@ def cb_motion_f(update_last=True):
     pos = get_pos(catching_keys_data['input_line'], re.escape(pattern),
                   catching_keys_data['cur'], True,
                   catching_keys_data['count'])
-    catching_keys_data['new_cur'] = pos + catching_keys_data['cur']
+    catching_keys_data['new_cur'] = max(0, pos) + catching_keys_data['cur']
     if update_last:
         last_search_motion = {'motion': "f", 'data': pattern}
     cb_key_combo_default(None, None, "")
@@ -468,13 +468,13 @@ def cb_motion_F(update_last=True):
     """
     global last_search_motion
     pattern = catching_keys_data['keys']
-    cur = len(catching_keys_data['input_line']) - catching_keys_data['cur'] + 1
+    cur = len(catching_keys_data['input_line']) - catching_keys_data['cur']
     pos = get_pos(catching_keys_data['input_line'][::-1],
                   re.escape(pattern),
                   cur,
-                  True,
+                  False,
                   catching_keys_data['count'])
-    catching_keys_data['new_cur'] = catching_keys_data['cur'] - pos - 2
+    catching_keys_data['new_cur'] = catching_keys_data['cur'] - max(0, pos + 1)
     if update_last:
         last_search_motion = {'motion': "F", 'data': pattern}
     cb_key_combo_default(None, None, "")
