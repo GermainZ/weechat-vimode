@@ -1319,6 +1319,13 @@ def set_mode(arg):
     """Set the current mode and update the bar mode indicator."""
     global mode
     mode = arg
+    # If we're going to Normal mode, the cursor must move one character to the
+    # left.
+    if mode == "NORMAL":
+        buf = weechat.current_buffer()
+        input_line = weechat.buffer_get_string(buf, "input")
+        cur = weechat.buffer_get_integer(buf, "input_pos")
+        set_cur(buf, input_line, cur - 1, False)
     weechat.bar_item_update("mode_indicator")
 
 def print_warning(text):
