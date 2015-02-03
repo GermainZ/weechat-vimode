@@ -565,6 +565,15 @@ def key_cc(buf, input_line, cur, count):
     weechat.command("", "/input delete_line")
     set_mode("INSERT")
 
+def key_C(buf, input_line, cur, count):
+    """Delete from cursor to end of line and start Insert mode.
+
+    See Also:
+        `key_base()`.
+    """
+    weechat.command("", "/input delete_end_of_line")
+    set_mode("INSERT")
+
 def key_yy(buf, input_line, cur, count):
     """Yank line.
 
@@ -745,7 +754,9 @@ VI_KEYS = {'j': "/window scroll_down",
            'x': "/input delete_next_char",
            'X': "/input delete_previous_char",
            'dd': "/input delete_line",
+           'D': "/input delete_end_of_line",
            'cc': key_cc,
+           'C': key_C,
            'i': key_i,
            'a': key_a,
            'A': key_A,
