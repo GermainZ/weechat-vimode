@@ -77,12 +77,13 @@ vimode_settings = {'no_warn': ("off", "don't warn about problematic"
 # ---------------
 
 REGEX_MOTION_LOWERCASE_W = re.compile(r"\b\w|[^\w ]")
-REGEX_MOTION_UPPERCASE_W = re.compile(r"(?<!\S)\b\w")
+REGEX_MOTION_UPPERCASE_W = re.compile(r"(?<=\s)\S")
 REGEX_MOTION_LOWERCASE_E = re.compile(r"\w\b|[^\w ]")
 REGEX_MOTION_UPPERCASE_E = re.compile(r"\S(?!\S)")
 REGEX_MOTION_LOWERCASE_B = re.compile(r"\w\b|[^\w ]")
 REGEX_MOTION_UPPERCASE_B = re.compile(r"\w\b(?!\S)")
-REGEX_MOTION_GE = re.compile(r"\b\w|[^\w ]")
+REGEX_MOTION_G_LOWERCASE_E = re.compile(r"\b\w|[^\w ]")
+REGEX_MOTION_G_UPPERCASE_E = REGEX_MOTION_UPPERCASE_W
 REGEX_MOTION_CARRET = re.compile(r"\S")
 
 # Regex used to detect problematic keybindings.
@@ -288,7 +289,7 @@ def motion_w(input_line, cur, count):
         `motion_base()`.
     """
     pos = get_pos(input_line, REGEX_MOTION_LOWERCASE_W, cur, True, count)
-    if not pos:
+    if pos == -1:
         return len(input_line), False, False
     return cur + pos, False, False
 
@@ -299,7 +300,7 @@ def motion_W(input_line, cur, count):
         `motion_base()`.
     """
     pos = get_pos(input_line, REGEX_MOTION_UPPERCASE_W, cur, True, count)
-    if not pos:
+    if pos == -1:
         return len(input_line), False, False
     return cur + pos, False, False
 
@@ -310,7 +311,7 @@ def motion_e(input_line, cur, count):
         `motion_base()`.
     """
     pos = get_pos(input_line, REGEX_MOTION_LOWERCASE_E, cur, True, count)
-    if not pos:
+    if pos == -1:
         return len(input_line), False, False
     return cur + pos, True, False
 
@@ -321,7 +322,7 @@ def motion_E(input_line, cur, count):
         `motion_base()`.
     """
     pos = get_pos(input_line, REGEX_MOTION_UPPERCASE_E, cur, True, count)
-    if not pos:
+    if pos == -1:
         return len(input_line), False, False
     return cur + pos, True, False
 
@@ -334,7 +335,7 @@ def motion_b(input_line, cur, count):
     new_cur = len(input_line) - cur
     pos = get_pos(input_line[::-1], REGEX_MOTION_LOWERCASE_B, new_cur,
                   count=count)
-    if not pos:
+    if pos == -1:
         return 0, False, False
     pos = len(input_line) - (pos + new_cur + 1)
     return pos, True, False
@@ -348,7 +349,7 @@ def motion_B(input_line, cur, count):
     new_cur = len(input_line) - cur
     pos = get_pos(input_line[::-1], REGEX_MOTION_UPPERCASE_B, new_cur,
                   count=count)
-    if not pos:
+    if pos == -1:
         return 0, False, False
     pos = len(input_line) - (pos + new_cur + 1)
     return pos, True, False
@@ -360,9 +361,9 @@ def motion_ge(input_line, cur, count):
         `motion_base()`.
     """
     new_cur = len(input_line) - cur - 1
-    pos = get_pos(input_line[::-1], REGEX_MOTION_GE, new_cur,
+    pos = get_pos(input_line[::-1], REGEX_MOTION_G_LOWERCASE_E, new_cur, True,
                   count)
-    if not pos:
+    if pos == -1:
         return 0, False, False
     pos = len(input_line) - (pos + new_cur + 1)
     return pos, True, False
@@ -373,10 +374,10 @@ def motion_gE(input_line, cur, count):
     See Also:
         `motion_base()`.
     """
-    new_cur = len(input_line) - cur
-    pos = get_pos(input_line[::-1], REGEX_MOTION_GE, new_cur,
+    new_cur = len(input_line) - cur - 1
+    pos = get_pos(input_line[::-1], REGEX_MOTION_G_UPPERCASE_E, new_cur,
                   True, count)
-    if not pos:
+    if pos == -1:
         return 0, False, False
     pos = len(input_line) - (pos + new_cur + 1)
     return pos, True, False
@@ -1181,11 +1182,11 @@ def get_pos(data, regex, cur, ignore_cur=False, count=0):
         count (int, optional): the index of the match to return. Defaults to 0.
 
     Returns:
-        int: position of the match. 0 if no matches are found.
+        int: position of the match. -1 if no matches are found.
     """
     # List of the *positions* of the found patterns.
     matches = [m.start() for m in re.finditer(regex, data[cur:])]
-    pos = 0
+    pos = -1
     if count:
         if len(matches) > count - 1:
             if ignore_cur and matches[0] == 0:
