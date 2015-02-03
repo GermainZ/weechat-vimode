@@ -1085,6 +1085,17 @@ def cb_exec_cmd(data, remaining_calls):
     # Shell command.
     elif data.startswith("!"):
         weechat.command("", "/exec -buffer shell %s" % data[1:])
+    # Commands like `:22`. This should start cursor mode (``/cursor``) and take
+    # us to the relevant line.
+    # TODO: look into possible replacement key bindings for: ← ↑ → ↓ Q m q.
+    elif data.isdigit():
+        line_number = int(data)
+        hdata_window = weechat.hdata_get("window")
+        window = weechat.current_window()
+        x = weechat.hdata_integer(hdata_window, window, "win_chat_x")
+        y = (weechat.hdata_integer(hdata_window, window, "win_chat_y") +
+             (line_numbers - 1))
+        weechat.command("", "/cursor go {},{}".format(x, y))
     # Check againt defined commands.
     else:
         data = data.split(" ", 1)
