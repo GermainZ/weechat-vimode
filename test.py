@@ -36,7 +36,7 @@ sys.modules['weechat'] = Mock()
 import vimode
 
 
-SERVER_NAME = "weechat-vimode-test"
+SERVER_NAME = "WEECHAT-VIMODE-TEST"
 TEST_LINES = ["    This is a test! Hello! ",
               " !olleH !tset a si sihT    ",
               # I don't think those are necessary to support in real life
@@ -79,7 +79,9 @@ def test_motion(motion_func, motion_keys):
         for cur in range(0, len(line)):
             # Get the cursor position, as returned by our function.
             got, _, catching = motion_func(line, cur, count)
-            got = min(len(line), got + 1)
+            # Out of bound positions are corrected anyway, so we don't mind
+            # those inaccuracies.
+            got = max(1, min(len(line), got + 1))
             # If it's a catching motion (e.g. "f"), it's not done yet.
             if catching:
                 vimode.catching_keys_data['keys'] = "a"
@@ -87,7 +89,7 @@ def test_motion(motion_func, motion_keys):
                 callback = vimode.catching_keys_data['callback']
                 getattr(vimode, callback)()
                 got, _, _ = motion_func(line, cur, count)
-                got = min(len(line), cur + 1 if got == -1 else got + 1)
+                got = max(1, min(len(line), cur + 1 if got == -1 else got + 1))
 
             # Set the cursor's position on the vim server.
             vim_expr("setpos('.', [0, 1, {}, 0])".format(cur + 1))
@@ -96,7 +98,7 @@ def test_motion(motion_func, motion_keys):
             # Complete the motion if it's catching (e.g. "f").
             if catching:
                 vim_send("a")
-            # Get the cursor's positon on the vim server.
+            # Get the cursor's position on the vim server.
             expected = vim_get_cur()
             # Print errors, if any.
             if got != expected:
@@ -105,8 +107,10 @@ def test_motion(motion_func, motion_keys):
 
 
 # Start a vim server (we use gvim because it forks directly).
-subprocess.Popen(["gvim", "--servername", SERVER_NAME]).wait()
-time.sleep(0.5)  # To make sure it's completely ready.
+SERVERS = subprocess.Popen(["gvim", "--serverlist"], stdout=subprocess.PIPE).communicate()[0]
+if not (SERVERS and SERVER_NAME in SERVERS.split()):
+    subprocess.Popen(["gvim", "--servername", SERVER_NAME]).wait()
+    time.sleep(0.5)  # To make sure it's completely ready.
 
 # Test each of weechat-vimode's custom motion implementations.
 for motion in vimode.VI_MOTIONS:
