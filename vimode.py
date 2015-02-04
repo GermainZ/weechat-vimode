@@ -1148,6 +1148,7 @@ def cb_vimode_cmd(data, buf, args):
         infolist = weechat.infolist_get("key", "", "default")
         weechat.infolist_reset_item_cursor(infolist)
         commands = ["/key unbind ctrl-W",
+                    "/key bind ctrl-W /input delete_previous_word",
                     "/key bind ctrl-^ /input jump_last_buffer_displayed",
                     "/key bind ctrl-Wh /window left",
                     "/key bind ctrl-Wj /window down",
