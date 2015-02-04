@@ -76,13 +76,12 @@ vimode_settings = {'no_warn': ("off", "don't warn about problematic"
 # Regex patterns.
 # ---------------
 
+WHITESPACE = re.compile(r"\s")
+IS_KEYWORD = re.compile(r"[a-zA-Z0-9_@À-ÿ]")
 REGEX_MOTION_LOWERCASE_W = re.compile(r"\b\S|(?<=\s)\S")
 REGEX_MOTION_UPPERCASE_W = re.compile(r"(?<=\s)\S")
-REGEX_MOTION_LOWERCASE_E = re.compile(r"\w\b|[^\w ]")
 REGEX_MOTION_UPPERCASE_E = re.compile(r"\S(?!\S)")
-REGEX_MOTION_LOWERCASE_B = re.compile(r"\S\b|[^\S ]")
 REGEX_MOTION_UPPERCASE_B = REGEX_MOTION_UPPERCASE_E
-REGEX_MOTION_G_LOWERCASE_E = re.compile(r"\b\S|[^\S ]")
 REGEX_MOTION_G_UPPERCASE_E = REGEX_MOTION_UPPERCASE_W
 REGEX_MOTION_CARRET = re.compile(r"\S")
 
@@ -310,10 +309,29 @@ def motion_e(input_line, cur, count):
     See Also:
         `motion_base()`.
     """
-    pos = get_pos(input_line, REGEX_MOTION_LOWERCASE_E, cur, True, count)
-    if pos == -1:
-        return len(input_line), False, False
-    return cur + pos, True, False
+    for _ in range(max(1, count)):
+        found = False
+        pos = cur
+        for pos in range(cur + 1, len(input_line) - 1):
+            # Whitespace, keep going.
+            if WHITESPACE.match(input_line[pos]):
+                pass
+            # End of sequence made from 'iskeyword' characters only,
+            # or end of sequence made from non 'iskeyword' characters only.
+            elif ((IS_KEYWORD.match(input_line[pos]) and
+                (not IS_KEYWORD.match(input_line[pos + 1]) or
+                    WHITESPACE.match(input_line[pos + 1]))) or
+                (not IS_KEYWORD.match(input_line[pos]) and
+                    (IS_KEYWORD.match(input_line[pos + 1]) or
+                        WHITESPACE.match(input_line[pos + 1])))):
+                found = True
+                cur = pos
+                break
+        # We're at the character before the last and we still found nothing.
+        # Go to the last character.
+        if not found:
+            cur = pos + 1
+    return cur, True, False
 
 def motion_E(input_line, cur, count):
     """Go to the end of `count` WORDS and return cusor position.
@@ -332,12 +350,9 @@ def motion_b(input_line, cur, count):
     See Also:
         `motion_base()`.
     """
-    new_cur = len(input_line) - cur
-    pos = get_pos(input_line[::-1], REGEX_MOTION_LOWERCASE_B, new_cur,
-                  count=count)
-    if pos == -1:
-        return 0, False, False
-    pos = len(input_line) - (pos + new_cur + 1)
+    # "b" is just "e" on inverted data (e.g. "olleH" instead of "Hello").
+    pos_inv = motion_e(input_line[::-1], len(input_line) - cur - 1, count)[0]
+    pos = len(input_line) - pos_inv - 1
     return pos, True, False
 
 def motion_B(input_line, cur, count):
@@ -360,12 +375,9 @@ def motion_ge(input_line, cur, count):
     See Also:
         `motion_base()`.
     """
-    new_cur = len(input_line) - cur - 1
-    pos = get_pos(input_line[::-1], REGEX_MOTION_G_LOWERCASE_E, new_cur, True,
-                  count)
-    if pos == -1:
-        return 0, False, False
-    pos = len(input_line) - (pos + new_cur + 1)
+    # "ge is just "w" on inverted data (e.g. "olleH" instead of "Hello").
+    pos_inv = motion_w(input_line[::-1], len(input_line) - cur - 1, count)[0]
+    pos = len(input_line) - pos_inv - 1
     return pos, True, False
 
 def motion_gE(input_line, cur, count):
