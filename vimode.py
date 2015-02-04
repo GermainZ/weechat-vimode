@@ -1118,7 +1118,7 @@ def cb_exec_cmd(data, remaining_calls):
         window = weechat.current_window()
         x = weechat.hdata_integer(hdata_window, window, "win_chat_x")
         y = (weechat.hdata_integer(hdata_window, window, "win_chat_y") +
-             (line_numbers - 1))
+             (line_number - 1))
         weechat.command("", "/cursor go {},{}".format(x, y))
     # Check againt defined commands.
     else:
