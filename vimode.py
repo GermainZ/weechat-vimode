@@ -84,6 +84,7 @@ REGEX_MOTION_UPPERCASE_E = re.compile(r"\S(?!\S)")
 REGEX_MOTION_UPPERCASE_B = REGEX_MOTION_UPPERCASE_E
 REGEX_MOTION_G_UPPERCASE_E = REGEX_MOTION_UPPERCASE_W
 REGEX_MOTION_CARRET = re.compile(r"\S")
+REGEX_INT = r"[0-9]"
 
 # Regex used to detect problematic keybindings.
 # For example: meta-wmeta-s is bound by default to ``/window swap``.
@@ -196,7 +197,7 @@ def motion_base(input_line, cur, count):
         `motion_f()` (catching motion).
     """
     # Find (relative to cur) position of next number.
-    pos = get_pos(input_line, r"[0-9]", cur, True, count)
+    pos = get_pos(input_line, REGEX_INT, cur, True, count)
     # Return the new (absolute) cursor position.
     # This motion is exclusive, so overwrite is False.
     return cur + pos, False
@@ -319,11 +320,11 @@ def motion_e(input_line, cur, count):
             # End of sequence made from 'iskeyword' characters only,
             # or end of sequence made from non 'iskeyword' characters only.
             elif ((IS_KEYWORD.match(input_line[pos]) and
-                (not IS_KEYWORD.match(input_line[pos + 1]) or
+                   (not IS_KEYWORD.match(input_line[pos + 1]) or
                     WHITESPACE.match(input_line[pos + 1]))) or
-                (not IS_KEYWORD.match(input_line[pos]) and
-                    (IS_KEYWORD.match(input_line[pos + 1]) or
-                        WHITESPACE.match(input_line[pos + 1])))):
+                  (not IS_KEYWORD.match(input_line[pos]) and
+                   (IS_KEYWORD.match(input_line[pos + 1]) or
+                    WHITESPACE.match(input_line[pos + 1])))):
                 found = True
                 cur = pos
                 break
