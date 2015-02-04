@@ -1,6 +1,10 @@
 # Description:
 Add vi/vim-like modes and keybindings to WeeChat.
 
+# Screencast
+
+[![weechat-vimode screencast (webm; 7.63M](https://ptpb.pw/be75e2b38eb743a29682ca60e6768ab8d0418250.png)](https://ptpb.pw/a826c31608ec80d0eed229b8747b2bdd27b92ca3.webm)
+
 # Usage:
 To switch to Normal mode, press `Esc` or `Ctrl+Space`.
 
