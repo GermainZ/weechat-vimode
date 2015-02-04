@@ -1,8 +1,28 @@
 # Description:
 Add vi/vim-like modes and keybindings to WeeChat.
 
-# Screencast
 
+# Download:
+weechat-vimode is available in the WeeChat scripts repo. You can install it by
+running the following command:
+
+    /script install vimode.py
+
+The version on GitHub may be more recent. You can install it from the shell as
+follows:
+
+    cd ~/.weechat/python/
+    wget 'https://github.com/GermainZ/weechat-vimode/raw/master/vimode.py'
+    ln -s ../vimode.py autoload/vimode.py
+
+If you prefer to clone the git repo (allowing you to easily update it), you can
+do the following instead:
+
+    git clone 'git@github.com:GermainZ/weechat-vimode.git'
+    ln -s /path/to/git/repo/vimode.py ~/.weechat/python/autoload/vimode.py
+
+
+# Screencast:
 [![weechat-vimode screencast (webm; 7.63M](https://ptpb.pw/be75e2b38eb743a29682ca60e6768ab8d0418250.png)](https://ptpb.pw/a826c31608ec80d0eed229b8747b2bdd27b92ca3.webm)
 
 # Usage:
@@ -27,8 +47,8 @@ To switch back to Insert mode, you can use `i`, `a`, `A`, etc.
 To execute an Ex command, simply precede it with a ':' while in Normal mode,
 for example: ":h" or ":s/foo/bar".
 
-# Showing line numbers:
 
+# Showing line numbers:
 The `vi_line_numbers` bar (comes with a bar item) is provided but hidden by
 default, and can be shown to display line numbers next to the chat window
 (similar to vi's `:set number`). You can show it by using the command:
@@ -38,8 +58,9 @@ default, and can be shown to display line numbers next to the chat window
 for it to be displayed correctly, but the defaults should suit most users.)
 
 It is useful for `:<num>` commands, which will start WeeChat's cursor mode and
-take you to the appropriate line. You can then use the default key bindings
-to quote the message (`Q`, `m` and `q`).
+take you to the appropriate line. You can then use the default key bindings to
+quote the message (`Q`, `m` and `q`).
+
 
 # Current key bindings:
 
@@ -64,11 +85,11 @@ to quote the message (`Q`, `m` and `q`).
 * `0`               To the first character of the line.
 * `^`               To the first non-blank character of the line exclusive.
 * `$`               To the end of the line exclusive.
-* `f{char}`         To **[count]**'th occurence of **{char}** to the right.
-* `F{char}`         To **[count]**'th occurence of **{char}** to the left.
-* `t{char}`         Till before **[count]**'th occurence of **{char}** to the
+* `f{char}`         To **[count]**'th occurrence of **{char}** to the right.
+* `F{char}`         To **[count]**'th occurrence of **{char}** to the left.
+* `t{char}`         Till before **[count]**'th occurrence of **{char}** to the
                     right.
-* `T{char}`         Till after **[count]**'th occurence of **{char}** to the
+* `T{char}`         Till after **[count]**'th occurrence of **{char}** to the
                     left.
 
 ### Other:
@@ -144,8 +165,9 @@ to quote the message (`Q`, `m` and `q`).
                     ':script …' is equivalent to '/script …').
 
 \* Supports regex (check docs for the Python re module for more
-information). `&` in the replacement is also substituted by the pattern. If
-the `g` flag isn't present, only the first match will be substituted.
+information). `&` in the replacement is also substituted by the pattern. If the
+`g` flag isn't present, only the first match will be substituted.
+
 
 # History:
 * version 0.1:      initial release
@@ -161,3 +183,18 @@ the `g` flag isn't present, only the first match will be substituted.
                     Improved substitutions (:s/foo/bar). Rewrote key handling
                     logic to take advantage of WeeChat API additions.
                     Many fixes and improvements. WeeChat ≥ 1.0.0 required.
+* version 0.5:      added: line numbers bar (disabled by default), :<num>
+                    commands, C, D. Many fixes and improvements.
+
+For the full change log, please check the [list of commits][1].
+
+
+# Support:
+Please report any issues using the [GitHub issue tracker][2]. Also feel free to
+suggest new features that you need.
+
+You can contact me on irc.freenode.net in #weechat or via a query (nickname:
+GermainZ).
+
+[1]: https://github.com/GermainZ/weechat-vimode/commits/master
+[2]: https://github.com/GermainZ/weechat-vimode/issues/new
