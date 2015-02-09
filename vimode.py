@@ -36,7 +36,7 @@ import weechat
 
 SCRIPT_NAME = "vimode"
 SCRIPT_AUTHOR = "GermainZ <germanosz@gmail.com>"
-SCRIPT_VERSION = "0.4"
+SCRIPT_VERSION = "0.5"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC = ("Add vi/vim-like modes and keybindings to WeeChat.")
 
@@ -689,6 +689,7 @@ def key_tilda(buf, input_line, cur, count):
         `key_base()`.
     """
     input_line = list(input_line)
+    count = max(1, count)
     while count and cur < len(input_line):
         input_line[cur] = input_line[cur].swapcase()
         count -= 1
