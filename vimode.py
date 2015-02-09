@@ -663,7 +663,7 @@ def cb_key_r():
     """
     global catching_keys_data
     input_line = list(catching_keys_data['input_line'])
-    count = catching_keys_data['count']
+    count = max(catching_keys_data['count'], 1)
     cur = catching_keys_data['cur']
     if cur + count <= len(input_line):
         for _ in range(count):
