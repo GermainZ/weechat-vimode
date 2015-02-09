@@ -760,6 +760,9 @@ def key_comma(buf, input_line, cur, count):
 # Vi key bindings.
 # ================
 
+# Test. FIXME.
+USER_VI_KEYS = {'Y': "y$", 'gb': ":b"}
+
 # String values will be executed as normal WeeChat commands.
 # For functions, see `key_base()` for reference.
 VI_KEYS = {'j': "/window scroll_down",
@@ -967,13 +970,19 @@ def cb_key_combo_default(data, signal, signal_data):
     if not matched:
         vi_buffer = ""
         return weechat.WEECHAT_RC_OK_EAT
+    # It's a command (user defined key mapped to a :cmd).
+    if vi_keys.startswith(":"):
+        weechat.hook_timer(1, 0, 1, "cb_exec_cmd", "{} {}".format(vi_keys,
+                                                                  count))
+        vi_buffer = ""
+        return weechat.WEECHAT_RC_OK_EAT
 
     buf = weechat.current_buffer()
     input_line = weechat.buffer_get_string(buf, "input")
     cur = weechat.buffer_get_integer(buf, "input_pos")
 
-    # It's a key. If the corresponding value is a string, we assume it's a
-    # WeeChat command. Otherwise, it's a method we'll call.
+    # It's a default key. If the corresponding value is a string, we assume
+    # it's a WeeChat command. Otherwise, it's a method we'll call.
     if vi_keys in VI_KEYS:
         if isinstance(VI_KEYS[vi_keys], str):
             for _ in range(max(count, 1)):
@@ -1130,7 +1139,10 @@ def cb_exec_cmd(data, remaining_calls):
         if len(data) == 2:
             args = data[1]
         if cmd in VI_COMMANDS:
-            weechat.command("", "%s %s" % (VI_COMMANDS[cmd], args))
+            if isinstance(VI_COMMANDS[cmd], str):
+                weechat.command("", "%s %s" % (VI_COMMANDS[cmd], args))
+            else:
+                VI_COMMANDS[cmd](args)
         # No vi commands defined, run the command as a WeeChat command.
         else:
             weechat.command("", "/{} {}".format(cmd, args))
@@ -1276,8 +1288,8 @@ def get_keys_and_count(combo):
     Returns:
         matched (bool): True if the combo has a (partial or full) match, False
             otherwise.
-        combo (str): `combo` with the count removed. These are the actual keys
-            we should handle.
+        combo (str): `combo` with the count removed. User mappings are also
+            expanded. These are the actual keys we should handle.
         count (int): count for `combo`.
     """
     # Look for a potential match (e.g. "d" might become "dw" or "dd" so we
@@ -1296,6 +1308,16 @@ def get_keys_and_count(combo):
                 break
         combo = combo.replace(count, "", 1)
         count = int(count)
+    # It's a user defined key. Expand it.
+    if combo in USER_VI_KEYS:
+        combo = USER_VI_KEYS[combo]
+
+    # If it's a command, check against defined commands.
+    if not matched and combo.startswith(":"):
+        for command in VI_COMMANDS.keys():
+            if command.startswith(combo[1:]):
+                matched = True
+                break
     # Check against defined keys.
     if not matched:
         for key in VI_KEYS:
