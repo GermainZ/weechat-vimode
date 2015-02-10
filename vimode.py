@@ -761,7 +761,8 @@ def key_comma(buf, input_line, cur, count):
 # ================
 
 # Test. FIXME.
-USER_VI_KEYS = {'Y': "y$", 'gb': ":b"}
+USER_VI_KEYS = {'Y': "y$", 'gb': ":b", '\x01J': "/buffer +1",
+                '\x01K': "/buffer -1"}
 
 # String values will be executed as normal WeeChat commands.
 # For functions, see `key_base()` for reference.
@@ -974,6 +975,11 @@ def cb_key_combo_default(data, signal, signal_data):
     if vi_keys.startswith(":"):
         weechat.hook_timer(1, 0, 1, "cb_exec_cmd", "{} {}".format(vi_keys,
                                                                   count))
+        vi_buffer = ""
+        return weechat.WEECHAT_RC_OK_EAT
+    # It's a WeeChat command (user defined key mapped to a /cmd).
+    if vi_keys.startswith("/"):
+        weechat.command("", vi_keys)
         vi_buffer = ""
         return weechat.WEECHAT_RC_OK_EAT
 
@@ -1312,6 +1318,9 @@ def get_keys_and_count(combo):
     if combo in USER_VI_KEYS:
         combo = USER_VI_KEYS[combo]
 
+    # It's a WeeChat command.
+    if not matched and combo.startswith("/"):
+        matched = True
     # If it's a command, check against defined commands.
     if not matched and combo.startswith(":"):
         for command in VI_COMMANDS.keys():
