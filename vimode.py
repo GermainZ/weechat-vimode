@@ -50,7 +50,7 @@ SCRIPT_DESC = ("Add vi/vim-like modes and keybindings to WeeChat.")
 # Halp! Halp! Halp!
 GITHUB_BASE = "https://github.com/GermainZ/weechat-vimode/blob/master/"
 README_URL = GITHUB_BASE + "README.md"
-FAQ_KEYBINDINGS = GITHUB_BASE + "FAQ#problematic-key-bindings.md"
+FAQ_KEYBINDINGS = GITHUB_BASE + "FAQ.md#problematic-key-bindings"
 FAQ_ESC = GITHUB_BASE + "FAQ.md#esc-key-not-being-detected-instantly"
 
 # Holds the text of the command-line mode (currently only Ex commands ":").
