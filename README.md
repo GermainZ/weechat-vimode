@@ -18,7 +18,7 @@ follows:
 If you prefer to clone the git repo (allowing you to easily update it), you can
 do the following instead:
 
-    git clone 'git@github.com:GermainZ/weechat-vimode.git'
+    git clone 'https://github.com/GermainZ/weechat-vimode.git'
     ln -s /path/to/git/repo/vimode.py ~/.weechat/python/autoload/vimode.py
 
 
