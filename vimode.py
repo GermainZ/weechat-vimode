@@ -1127,6 +1127,7 @@ def cb_exec_cmd(data, remaining_calls):
         weechat.command("", "/cursor go {},{}".format(x, y))
     # Check againt defined commands.
     else:
+        raw_data = data
         data = data.split(" ", 1)
         cmd = data[0]
         args = ""
@@ -1134,8 +1135,15 @@ def cb_exec_cmd(data, remaining_calls):
             args = data[1]
         if cmd in VI_COMMANDS:
             weechat.command("", "%s %s" % (VI_COMMANDS[cmd], args))
-        # No vi commands defined, run the command as a WeeChat command.
         else:
+            # Check for commands not sepearated by space (e.g. "b2")
+            for i in range(1, len(raw_data)):
+                cmd = raw_data[:i]
+                args = raw_data[i:]
+                if cmd in VI_COMMANDS and args.isdigit():
+                    weechat.command("", "%s %s" % (VI_COMMANDS[cmd], args))
+                    return weechat.WEECHAT_RC_OK
+            # No vi commands found, run the command as WeeChat command
             weechat.command("", "/{} {}".format(cmd, args))
     return weechat.WEECHAT_RC_OK
 
