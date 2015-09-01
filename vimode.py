@@ -1147,6 +1147,9 @@ def cb_exec_cmd(data, remaining_calls):
             weechat.command("", "/{} {}".format(cmd, args))
     return weechat.WEECHAT_RC_OK
 
+def cb_vimode_go_to_normal(data, buf, args):
+    set_mode("NORMAL")
+    return weechat.WEECHAT_RC_OK
 
 # Script commands.
 # ----------------
@@ -1455,3 +1458,6 @@ if __name__ == "__main__":
                          "          --list: only list changes",
                          "help || bind_keys |--list",
                          "cb_vimode_cmd", "")
+    weechat.hook_command("vimode_go_to_normal", ("This command can be used for"
+                         " key bindings to go to normal mode."), "", "", "",
+                         "cb_vimode_go_to_normal", "")

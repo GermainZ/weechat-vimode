@@ -45,3 +45,21 @@ input key sequences to fix this.
 `set -sg escape-time 0` to your `.tmux.conf` file).
 * screen: set `maptimeout` to 0 (e.g. `C-a :` followed by `maptimeout 0`, or
 add `maptimeout 0` to your `.screenrc`).
+
+# Exiting insert mode upon sending a message
+
+If you want to go to normal mode after sending a message, you can rebind the
+`<Enter>` key in WeeChat:
+
+    /key bind ctrl-M /vimode_go_to_normal;/input return
+
+If you're using a script that rebinds `<Enter>` like multiline.pl, replace
+`/input return` with the appropriate command. To check the current binding,
+you can press `Alt-K` followed by `<Enter>` in WeeChat.
+
+You'll need to manually rebind `<Enter>` if you remove weechat-vimode. For
+example:
+
+    /key bind ctrl-M /input return
+
+You can always use `^J` instead of `<Enter>` if something goes wrong.
