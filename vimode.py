@@ -25,7 +25,10 @@ import csv
 import os
 import re
 import subprocess
-from StringIO import StringIO
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 import time
 
 import weechat
@@ -1409,7 +1412,7 @@ if __name__ == "__main__":
         print_warning("Please upgrade to WeeChat ≥ 1.0.0. Previous versions"
                       " are not supported.")
     # Set up script options.
-    for option, value in vimode_settings.items():
+    for option, value in list(vimode_settings.items()):
         if weechat.config_is_set_plugin(option):
             vimode_settings[option] = weechat.config_get_plugin(option)
         else:
