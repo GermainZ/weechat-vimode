@@ -120,8 +120,8 @@ quote the message (`Q`, `m` and `q`).
 * `k`               Scroll buffer down. \*
 * `^U`              Scroll buffer page up. \*
 * `^D`              Scroll buffer page down. \*
-* `gt` or `K`       Go to the next buffer.
-* `gT` or `J`       Go to the previous buffer.
+* `gt` or `J`       Go to the next buffer.
+* `gT` or `K`       Go to the previous buffer.
 * `gg`              Goto first line.
 * `G`               Goto line **[count]**, default last line. \*
 * `/`               Launch WeeChat search mode
