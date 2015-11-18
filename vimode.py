@@ -983,7 +983,8 @@ def cb_key_combo_default(data, signal, signal_data):
                 # This is to avoid crashing WeeChat on script reloads/unloads,
                 # because no hooks must still be running when a script is
                 # reloaded or unloaded.
-                if VI_KEYS[vi_keys] == "/input return":
+                if (VI_KEYS[vi_keys] == "/input return" and
+                        input_line.startswith("/script ")):
                     return weechat.WEECHAT_RC_OK
                 weechat.command("", VI_KEYS[vi_keys])
                 current_cur = weechat.buffer_get_integer(buf, "input_pos")
