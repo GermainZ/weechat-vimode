@@ -114,14 +114,16 @@ quote the message (`Q`, `m` and `q`).
 * `I`               Insert text before the first non-blank in the line.
 * `p`               Put the text from the clipboard after the cursor. Requires
                     xclip.
+* `nt`              Scroll nicklist up.
+* `nT`              Scroll nicklist down.
 
 ## Buffers:
-* `j`               Scroll buffer up. \*
-* `k`               Scroll buffer down. \*
+* `j`               Scroll buffer down. \*
+* `k`               Scroll buffer up. \*
 * `^U`              Scroll buffer page up. \*
 * `^D`              Scroll buffer page down. \*
-* `gt` or `K`       Go to the next buffer.
-* `gT` or `J`       Go to the previous buffer.
+* `gt` or `K`       Go to the previous buffer.
+* `gT` or `J`       Go to the next buffer.
 * `gg`              Goto first line.
 * `G`               Goto line **[count]**, default last line. \*
 * `/`               Launch WeeChat search mode
