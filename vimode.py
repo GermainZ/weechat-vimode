@@ -1142,9 +1142,10 @@ def cb_exec_cmd(data, remaining_calls):
             # Check for commands not sepearated by space (e.g. "b2")
             for i in range(1, len(raw_data)):
                 tmp_cmd = raw_data[:i]
-                args = raw_data[i:]
-                if tmp_cmd in VI_COMMANDS and args.isdigit():
-                    weechat.command("", "%s %s" % (VI_COMMANDS[tmp_cmd], args))
+                tmp_args = raw_data[i:]
+                if tmp_cmd in VI_COMMANDS and tmp_args.isdigit():
+                    weechat.command("", "%s %s" % (VI_COMMANDS[tmp_cmd],
+                                                   tmp_args))
                     return weechat.WEECHAT_RC_OK
             # No vi commands found, run the command as WeeChat command
             weechat.command("", "/{} {}".format(cmd, args))
