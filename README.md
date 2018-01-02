@@ -13,7 +13,8 @@ follows:
 
     cd ~/.weechat/python/
     wget 'https://github.com/GermainZ/weechat-vimode/raw/master/vimode.py'
-    ln -s ../vimode.py autoload/vimode.py
+    cd autoload/
+    ln -s ../vimode.py .
 
 If you prefer to clone the git repo (allowing you to easily update it), you can
 do the following instead:
