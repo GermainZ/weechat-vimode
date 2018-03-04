@@ -103,18 +103,21 @@ REGEX_PROBLEMATIC_KEYBINDINGS = re.compile(r"meta-\w(meta|ctrl)")
 # ------------
 
 # See Also: `cb_exec_cmd()`.
-VI_COMMANDS = {'h': "/help",
-               'qall': "/exit",
-               'q': "/close",
-               'w': "/save",
-               'set': "/set",
-               'bp': "/buffer -1",
-               'bn': "/buffer +1",
-               'bd': "/close",
-               'b#': "/input jump_last_buffer_displayed",
-               'b': "/buffer",
-               'sp': "/window splith",
-               'vsp': "/window splitv"}
+VI_COMMAND_GROUPS = {('h', 'help'): "/help",
+                    ('qa', 'qall', 'quita', 'quitall'): "/exit",
+                    ('q', 'quit'): "/close",
+                    ('w', 'write'): "/save",
+                    ('bN', 'bNext', 'bp', 'bprevious'): "/buffer -1",
+                    ('bn', 'bnext'): "/buffer +1",
+                    ('bd', 'bdel', 'bdelete'): "/close",
+                    ('b#',): "/input jump_last_buffer_displayed",
+                    ('b', 'bu', 'buf', 'buffer'): "/buffer",
+                    ('sp', 'split'): "/window splith",
+                    ('vsp', 'vsplit'): "/window splitv"}
+
+VI_COMMANDS = dict()
+for T, v in VI_COMMAND_GROUPS.items():
+    VI_COMMANDS.update(dict.fromkeys(T, v))
 
 
 # Vi operators.
