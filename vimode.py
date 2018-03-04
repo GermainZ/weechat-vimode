@@ -601,6 +601,10 @@ def key_yy(buf, input_line, cur, count):
                             stdin=subprocess.PIPE)
     proc.communicate(input=input_line)
 
+def key_p(buf, input_line, cur, count):
+    """ Paste from system clipboard using xclip """
+    weechat.hook_process("xclip -o", 10 * 1000, "cb_key_p", weechat.current_buffer())
+
 def key_i(buf, input_line, cur, count):
     """Start Insert mode.
 
@@ -780,7 +784,7 @@ VI_KEYS = {'j': "/window scroll_down",
            'A': key_A,
            'I': key_I,
            'yy': key_yy,
-           'p': "/input clipboard_paste",
+           'p': key_p,
            '/': "/input search_text_here",
            'gt': "/buffer -1",
            'K': "/buffer -1",
@@ -1073,6 +1077,32 @@ def cb_update_line_numbers(data, signal, signal_data):
 def cb_timer_update_line_numbers(data, remaining_calls):
     """Update the line numbers bar item."""
     weechat.bar_item_update("line_numbers")
+    return weechat.WEECHAT_RC_OK
+
+
+# Callbacks for Keys
+# -------
+
+def cb_key_p(data, command, return_code, output, err):
+    """ Process callback used by `key_p` for calling `weechat.hook_process(...)`
+
+    Related API Documentation:
+        https://weechat.org/files/doc/devel/weechat_scripting.en.html#hook_process
+    """
+    BUF = ""
+    this_buffer = data
+    if output != "":
+        BUF += output.strip()
+
+    if return_code == 0:
+        my_input = weechat.buffer_get_string(this_buffer, "input")
+        pos = weechat.buffer_get_integer(this_buffer, "input_pos")
+        my_input = my_input[:pos] + BUF + my_input[pos:]
+        pos += len(BUF)
+
+        weechat.buffer_set(this_buffer, "input", my_input)
+        weechat.buffer_set(this_buffer, "input_pos", str(pos))
+
     return weechat.WEECHAT_RC_OK
 
 
