@@ -113,7 +113,7 @@ VI_COMMAND_GROUPS = {('h', 'help'): "/help",
                     ('b#',): "/input jump_last_buffer_displayed",
                     ('b', 'bu', 'buf', 'buffer'): "/buffer",
                     ('sp', 'split'): "/window splith",
-                    ('vsp', 'vsplit'): "/window splitv"}
+                    ('vs', 'vsplit'): "/window splitv"}
 
 VI_COMMANDS = dict()
 for T, v in VI_COMMAND_GROUPS.items():
