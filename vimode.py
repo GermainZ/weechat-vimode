@@ -1031,12 +1031,14 @@ def cb_key_combo_default(data, signal, signal_data):
             for cmd in VI_COMMANDS.keys():
                 if cmd.startswith(cmd_text_orig):
                     cmd_compl_list.append(cmd)
-            curr_suggestion = cmd_compl_list[cmd_compl_pos]
-            cmd_text = ":%s" % curr_suggestion
-            cmd_compl_list[cmd_compl_pos] = weechat.string_eval_expression(
-                "${color:bold}%s${color:-bold}" % curr_suggestion, {}, {}, {})
-            cmd_compl_text = ", ".join(cmd_compl_list)
-            cmd_compl_pos = (cmd_compl_pos + 1) % len(cmd_compl_list)
+            if cmd_compl_list:
+                curr_suggestion = cmd_compl_list[cmd_compl_pos]
+                cmd_text = ":%s" % curr_suggestion
+                cmd_compl_list[cmd_compl_pos] = weechat.string_eval_expression(
+                    "${color:bold}%s${color:-bold}" % curr_suggestion,
+                    {}, {}, {})
+                cmd_compl_text = ", ".join(cmd_compl_list)
+                cmd_compl_pos = (cmd_compl_pos + 1) % len(cmd_compl_list)
         # Input.
         elif len(keys) == 1:
             cmd_text += keys
