@@ -87,9 +87,9 @@ vimode_settings = {'no_warn': ("off", "don't warn about problematic "
                                            "command used to paste clipboard; "
                                            "must output content to stdout"),
                    'imap_esc': ("", ("Use alternate mapping to enter Normal "
-                                       "mode while in Insert mode; having it "
-                                       "set to 'jk' is similar to "
-                                       "`:imap jk <Esc>` in vim")),
+                                     "mode while in Insert mode; having it "
+                                     "set to 'jk' is similar to "
+                                     "`:imap jk <Esc>` in vim")),
                    'imap_esc_timeout': ("1000", ("Time in ms to wait for the "
                                                  "imap_esc sequence to "
                                                  "complete"))}
