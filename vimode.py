@@ -72,14 +72,14 @@ catching_keys_data = {'amount': 0}
 last_search_motion = {'motion': None, 'data': None}
 
 # Script options.
-vimode_settings = {'no_warn': ("off", "don't warn about problematic"
+vimode_settings = {'no_warn': ("off", "don't warn about problematic "
                                "keybindings and tmux/screen"),
                    'copy_clipboard_cmd': ("xclip -selection c",
                                           "command used to copy to clipboard; "
                                           "must read input from stdin"),
                    'paste_clipboard_cmd': ("xclip -selection c -o",
-                                          "command used to paste clipboard; "
-                                          "must output content to stdout")}
+                                           "command used to paste clipboard; "
+                                           "must output content to stdout")}
 
 
 # Regex patterns.
@@ -110,16 +110,16 @@ REGEX_PROBLEMATIC_KEYBINDINGS = re.compile(r"meta-\w(meta|ctrl)")
 
 # See Also: `cb_exec_cmd()`.
 VI_COMMAND_GROUPS = {('h', 'help'): "/help",
-                    ('qa', 'qall', 'quita', 'quitall'): "/exit",
-                    ('q', 'quit'): "/close",
-                    ('w', 'write'): "/save",
-                    ('bN', 'bNext', 'bp', 'bprevious'): "/buffer -1",
-                    ('bn', 'bnext'): "/buffer +1",
-                    ('bd', 'bdel', 'bdelete'): "/close",
-                    ('b#',): "/input jump_last_buffer_displayed",
-                    ('b', 'bu', 'buf', 'buffer'): "/buffer",
-                    ('sp', 'split'): "/window splith",
-                    ('vs', 'vsplit'): "/window splitv"}
+                     ('qa', 'qall', 'quita', 'quitall'): "/exit",
+                     ('q', 'quit'): "/close",
+                     ('w', 'write'): "/save",
+                     ('bN', 'bNext', 'bp', 'bprevious'): "/buffer -1",
+                     ('bn', 'bnext'): "/buffer +1",
+                     ('bd', 'bdel', 'bdelete'): "/close",
+                     ('b#',): "/input jump_last_buffer_displayed",
+                     ('b', 'bu', 'buf', 'buffer'): "/buffer",
+                     ('sp', 'split'): "/window splith",
+                     ('vs', 'vsplit'): "/window splitv"}
 
 VI_COMMANDS = dict()
 for T, v in VI_COMMAND_GROUPS.items():
@@ -612,12 +612,27 @@ def key_yy(buf, input_line, cur, count):
 
 def key_p(buf, input_line, cur, count):
     """Paste text.
-    
+
     See Also:
         `key_base()`.
     """
     cmd = vimode_settings['paste_clipboard_cmd']
     weechat.hook_process(cmd, 10 * 1000, "cb_key_p", weechat.current_buffer())
+
+def cb_key_p(data, command, return_code, output, err):
+    """Callback for fetching clipboard text and pasting it."""
+    buf = ""
+    this_buffer = data
+    if output != "":
+        buf += output.strip()
+    if return_code == 0:
+        my_input = weechat.buffer_get_string(this_buffer, "input")
+        pos = weechat.buffer_get_integer(this_buffer, "input_pos")
+        my_input = my_input[:pos] + buf + my_input[pos:]
+        pos += len(buf)
+        weechat.buffer_set(this_buffer, "input", my_input)
+        weechat.buffer_set(this_buffer, "input_pos", str(pos))
+    return weechat.WEECHAT_RC_OK
 
 def key_i(buf, input_line, cur, count):
     """Start Insert mode.
@@ -1096,25 +1111,6 @@ def cb_timer_update_line_numbers(data, remaining_calls):
     return weechat.WEECHAT_RC_OK
 
 
-# Callbacks for Keys
-# -------
-
-def cb_key_p(data, command, return_code, output, err):
-    """Callback for fetching clipboard text and pasting it."""
-    buf = ""
-    this_buffer = data
-    if output != "":
-        buf += output.strip()
-    if return_code == 0:
-        my_input = weechat.buffer_get_string(this_buffer, "input")
-        pos = weechat.buffer_get_integer(this_buffer, "input_pos")
-        my_input = my_input[:pos] + buf + my_input[pos:]
-        pos += len(buf)
-        weechat.buffer_set(this_buffer, "input", my_input)
-        weechat.buffer_set(this_buffer, "input_pos", str(pos))
-    return weechat.WEECHAT_RC_OK
-
-
 # Config.
 # -------
 
@@ -1501,6 +1497,7 @@ if __name__ == "__main__":
                          "          --list: only list changes",
                          "help || bind_keys |--list",
                          "cb_vimode_cmd", "")
-    weechat.hook_command("vimode_go_to_normal", ("This command can be used for"
-                         " key bindings to go to normal mode."), "", "", "",
-                         "cb_vimode_go_to_normal", "")
+    weechat.hook_command("vimode_go_to_normal",
+                         ("This command can be used for key bindings to go to "
+                          "normal mode."),
+                         "", "", "", "cb_vimode_go_to_normal", "")
