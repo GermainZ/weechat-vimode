@@ -863,7 +863,9 @@ def cb_key_pressed(data, signal, signal_data):
 def cb_check_esc(data, remaining_calls):
     """Check if the Esc key was pressed and change the mode accordingly."""
     global esc_pressed, vi_buffer, cmd_text, catching_keys_data
-    if last_signal_time == float(data):
+    # Not perfect, would be better to use direct comparison (==) but that only
+    # works for py2 and not for py3.
+    if abs(last_signal_time - float(data)) <= 0.000001:
         esc_pressed += 1
         set_mode("NORMAL")
         # Cancel any current partial commands.
