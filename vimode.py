@@ -1206,7 +1206,7 @@ def cb_exec_cmd(data, remaining_calls):
              (line_number - 1))
         weechat.command("", "/cursor go {},{}".format(x, y))
     # Check againt defined commands.
-    else:
+    elif data:
         raw_data = data
         data = data.split(" ", 1)
         cmd = data[0]
