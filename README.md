@@ -27,7 +27,9 @@ do the following instead:
 [![weechat-vimode screencast (webm; 7.63M](https://ptpb.pw/be75e2b38eb743a29682ca60e6768ab8d0418250.png)](https://ptpb.pw/a826c31608ec80d0eed229b8747b2bdd27b92ca3.webm)
 
 # Usage:
-To switch to Normal mode, press `Esc` or `Ctrl+Space`.
+To switch to Normal mode, press `Esc` or `Ctrl+Space`. You can also use an
+alternate mapping while in Insert mode, similar to `:image jk <Esc>` in vim.
+See the `imap_esc` and `imap_esc_timeout` options for more details.
 
 Two bar items are provided:
 
@@ -70,7 +72,8 @@ quote the message (`Q`, `m` and `q`).
 ### Operators:
 * `d{motion}`       Delete text that **{motion}** moves over.
 * `c{motion}`       Delete **{motion}** text and start Insert mode.
-* `y{motion}`       Yank **{motion}** text to clipboard.
+* `y{motion}`       Yank **{motion}** text to clipboard. Uses xclip by default.
+                    You can change this with the `copy\_clipboard\_cmd` option.
 
 ### Motions:
 * `h`               **[count]** characters to the left exclusive.
@@ -111,10 +114,12 @@ quote the message (`Q`, `m` and `q`).
 * `cc`              Delete line and start Insert mode.
 * `C`               Delete from the cursor position to the end of the line,
                     and start Insert mode.
-* `yy`              Yank line to clipboard. Requires xclip.
+* `yy`              Yank line to clipboard. Uses xclip by default. You can
+                    change this with the `copy\_clipboard\_cmd` option.
 * `I`               Insert text before the first non-blank in the line.
-* `p`               Put the text from the clipboard after the cursor. Requires
-                    xclip.
+* `p`               Put the text from the clipboard after the cursor. Uses
+                    xclip by default. You can change this with the
+                    `paste\_clipboard\_cmd` option.
 * `nt`              Scroll nicklist up.
 * `nT`              Scroll nicklist down.
 
@@ -146,22 +151,26 @@ quote the message (`Q`, `m` and `q`).
 
 
 # Current commands:
-* `:h`              Help (`/help`)
+* `:h`, `:help`     Help (`/help`)
 * `:set`            Set WeeChat config option (`/set`)
-* `:q`              Closes current buffer (`/close`)
-* `:qall`           Exits WeeChat (`/exit`)
-* `:w`              Saves settings (`/save`)
-* `:bp`             Go to the previous buffer (`/buffer -1`).
-* `:bn`             Go to the next buffer (`/buffer +1`).
-* `:bd`             Close the current buffer (`/close`).
+* `:q`, `:quit`     Closes current buffer (`/close`)
+* `:qa`, `:qall`, `:quita`, `:quitall`
+                    Exits WeeChat (`/exit`)
+* `:w`, `:write`    Saves settings (`/save`)
+* `:bN`, `:bNext`, `:bp`, `:bprevious`
+                    Go to the previous buffer (`/buffer -1`).
+* `:bn`, `:bnext`   Go to the next buffer (`/buffer +1`).
+* `:bd`, `:bdel`, `:bdelete`
+                    Close the current buffer (`/close`).
 * `:b#`             Go to the last buffer (`/input jump_last_buffer`).
-* `:b [N]`          Go to buffer [N].
-* `:sp`             Split current window in two (`/window splith`).
-* `:vsp`            Split current window in two, but vertically
+* `:b [N]`, `:bu [N]`, `:buf [N]`, `:buffer [N]`
+                    Go to buffer [N].
+* `:sp`, `:split`   Split current window in two (`/window splith`).
+* `:vs`, `:vsplit`  Split current window in two, but vertically
                     (`/window splitv`).
 * `:!{cmd}`         Execute shell command (`/exec -buffer shell`)
-* `:s/pattern/repl`
-* `:s/pattern/repl/g`
+* `:s/pattern/repl`  
+  `:s/pattern/repl/g`
                     Search/Replace \*
 * `:<num>`          Start cursor mode and go to line.
 * `:command`        All other commands will be passed to WeeChat (e.g.
@@ -188,6 +197,12 @@ information). `&` in the replacement is also substituted by the pattern. If the
                     Many fixes and improvements. WeeChat ≥ 1.0.0 required.
 * version 0.5:      added: line numbers bar (disabled by default), :<num>
                     commands, C, D. Many fixes and improvements.
+* version 0.6:      added python3 support, `:imap <key_sequence> <Esc>`,
+                    `/vimode_go_to_normal` for use in user-defined key
+                    bindings, nt/nT to scroll nicklist, support for
+                    user-defined commands for copying/pasting, simple
+                    tab-completion for Ex mode. Flipped J/K and gT/gt. Other
+                    bug fixes and improvements.
 
 For the full change log, please check the [list of commits][1].
 
