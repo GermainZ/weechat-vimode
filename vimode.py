@@ -58,6 +58,12 @@ FAQ_ESC = GITHUB_BASE + "FAQ.md#esc-key-not-being-detected-instantly"
 
 # Holds the text of the command-line mode (currently only Ex commands ":").
 cmd_text = ""
+# Holds the text of the tab-completions for the command-line mode.
+cmd_compl_text = ""
+# Holds the original text of the command-line mode, used for completion.
+cmd_text_orig = None
+# Index of current suggestion, used for completion.
+cmd_compl_pos = 0
 # Mode we're in. One of INSERT, NORMAL or REPLACE.
 mode = "INSERT"
 # Holds normal commands (e.g. "dd").
@@ -917,7 +923,8 @@ def cb_key_combo_default(data, signal, signal_data):
 
     Esc is handled a bit differently to avoid delays, see `cb_key_pressed()`.
     """
-    global esc_pressed, vi_buffer, cmd_text
+    global esc_pressed, vi_buffer, cmd_text, cmd_compl_text, cmd_text_orig, \
+           cmd_compl_pos
 
     # If Esc was pressed, strip the Esc part from the pressed keys.
     # Example: user presses Esc followed by i. This is detected as "\x01[i",
@@ -1007,21 +1014,47 @@ def cb_key_combo_default(data, signal, signal_data):
             cmd_text = list(cmd_text)
             del cmd_text[-1]
             cmd_text = "".join(cmd_text)
+            cmd_compl_text = ""
+            cmd_text_orig = None
+            cmd_compl_pos = 0
         # Return key.
         elif keys == "\x01M":
             weechat.hook_timer(1, 0, 1, "cb_exec_cmd", cmd_text)
             cmd_text = ""
+        # Tab key.
+        elif keys == "\x01I":
+            if cmd_text_orig is None:
+                input_ = list(cmd_text)
+                del input_[0]
+                cmd_text_orig = "".join(input_)
+            cmd_compl_list = []
+            for cmd in VI_COMMANDS.keys():
+                if cmd.startswith(cmd_text_orig):
+                    cmd_compl_list.append(cmd)
+            curr_suggestion = cmd_compl_list[cmd_compl_pos]
+            cmd_text = ":%s" % curr_suggestion
+            cmd_compl_list[cmd_compl_pos] = weechat.string_eval_expression(
+                "${color:bold}%s${color:-bold}" % curr_suggestion, {}, {}, {})
+            cmd_compl_text = ", ".join(cmd_compl_list)
+            cmd_compl_pos = (cmd_compl_pos + 1) % len(cmd_compl_list)
         # Input.
         elif len(keys) == 1:
             cmd_text += keys
+            cmd_compl_text = ""
+            cmd_text_orig = None
+            cmd_compl_pos = 0
         # Update (and maybe hide) the bar item.
         weechat.bar_item_update("cmd_text")
+        weechat.bar_item_update("cmd_completion")
         if not cmd_text:
             weechat.command("", "/bar hide vi_cmd")
         return weechat.WEECHAT_RC_OK_EAT
     # Enter command mode.
     elif keys == ":":
         cmd_text += ":"
+        cmd_compl_text = ""
+        cmd_text_orig = None
+        cmd_compl_pos = 0
         weechat.command("", "/bar show vi_cmd")
         weechat.bar_item_update("cmd_text")
         return weechat.WEECHAT_RC_OK_EAT
@@ -1121,6 +1154,10 @@ def cb_vi_buffer(data, item, window):
 def cb_cmd_text(data, item, window):
     """Return the text of the command line."""
     return cmd_text
+
+def cb_cmd_completion(data, item, window):
+    """Return the text of the command line."""
+    return cmd_compl_text
 
 def cb_mode_indicator(data, item, window):
     """Return the current mode (INSERT/NORMAL/REPLACE)."""
@@ -1519,11 +1556,15 @@ if __name__ == "__main__":
     # Create bar items and setup hooks.
     weechat.bar_item_new("mode_indicator", "cb_mode_indicator", "")
     weechat.bar_item_new("cmd_text", "cb_cmd_text", "")
+    weechat.bar_item_new("cmd_completion", "cb_cmd_completion", "")
     weechat.bar_item_new("vi_buffer", "cb_vi_buffer", "")
     weechat.bar_item_new("line_numbers", "cb_line_numbers", "")
     weechat.bar_new("vi_cmd", "off", "0", "root", "", "bottom", "vertical",
                     "vertical", "0", "0", "default", "default", "default", "0",
-                    "cmd_text")
+                    "[cmd_completion],cmd_text")
+    # We need to specifically update the vi_cmd's "items" for existing users.
+    vi_cmd_bar = weechat.bar_search("vi_cmd")
+    weechat.bar_set(vi_cmd_bar, "items", "[cmd_completion],cmd_text")
     weechat.bar_new("vi_line_numbers", "on", "0", "window", "", "left",
                     "vertical", "vertical", "0", "0", "default", "default",
                     "default", "0", "line_numbers")
