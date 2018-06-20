@@ -76,7 +76,10 @@ vimode_settings = {'no_warn': ("off", "don't warn about problematic"
                                "keybindings and tmux/screen"),
                    'copy_clipboard_cmd': ("xclip -selection c",
                                           "command used to copy to clipboard; "
-                                          "must read input from stdin")}
+                                          "must read input from stdin"),
+                   'paste_clipboard_cmd': ("xclip -selection c -o",
+                                          "command used to paste clipboard; "
+                                          "must output content to stdout")}
 
 
 # Regex patterns.
@@ -608,8 +611,13 @@ def key_yy(buf, input_line, cur, count):
     proc.communicate(input=input_line.encode())
 
 def key_p(buf, input_line, cur, count):
-    """ Paste from system clipboard using xclip """
-    weechat.hook_process("xclip -o", 10 * 1000, "cb_key_p", weechat.current_buffer())
+    """Paste text.
+    
+    See Also:
+        `key_base()`.
+    """
+    cmd = vimode_settings['paste_clipboard_cmd']
+    weechat.hook_process(cmd, 10 * 1000, "cb_key_p", weechat.current_buffer())
 
 def key_i(buf, input_line, cur, count):
     """Start Insert mode.
@@ -1092,25 +1100,18 @@ def cb_timer_update_line_numbers(data, remaining_calls):
 # -------
 
 def cb_key_p(data, command, return_code, output, err):
-    """ Process callback used by `key_p` for calling `weechat.hook_process(...)`
-
-    Related API Documentation:
-        https://weechat.org/files/doc/devel/weechat_scripting.en.html#hook_process
-    """
-    BUF = ""
+    """Callback for fetching clipboard text and pasting it."""
+    buf = ""
     this_buffer = data
     if output != "":
-        BUF += output.strip()
-
+        buf += output.strip()
     if return_code == 0:
         my_input = weechat.buffer_get_string(this_buffer, "input")
         pos = weechat.buffer_get_integer(this_buffer, "input_pos")
-        my_input = my_input[:pos] + BUF + my_input[pos:]
-        pos += len(BUF)
-
+        my_input = my_input[:pos] + buf + my_input[pos:]
+        pos += len(buf)
         weechat.buffer_set(this_buffer, "input", my_input)
         weechat.buffer_set(this_buffer, "input_pos", str(pos))
-
     return weechat.WEECHAT_RC_OK
 
 
