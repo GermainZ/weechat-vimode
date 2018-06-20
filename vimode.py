@@ -73,7 +73,10 @@ last_search_motion = {'motion': None, 'data': None}
 
 # Script options.
 vimode_settings = {'no_warn': ("off", "don't warn about problematic"
-                               "keybindings and tmux/screen")}
+                               "keybindings and tmux/screen"),
+                   'copy_clipboard_cmd': ("xclip -selection c",
+                                          "command used to copy to clipboard; "
+                                          "must read input from stdin")}
 
 
 # Regex patterns.
@@ -272,9 +275,9 @@ def operator_y(buf, input_line, pos1, pos2, _):
     """
     start = min(pos1, pos2)
     end = max(pos1, pos2)
-    proc = subprocess.Popen(["xclip", "-selection", "c"],
-                            stdin=subprocess.PIPE)
-    proc.communicate(input=input_line[start:end])
+    cmd = vimode_settings['copy_clipboard_cmd']
+    proc = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE)
+    proc.communicate(input=input_line[start:end].encode())
 
 
 # Motions:
@@ -600,9 +603,9 @@ def key_yy(buf, input_line, cur, count):
     See Also:
         `key_base()`.
     """
-    proc = subprocess.Popen(["xclip", "-selection", "c"],
-                            stdin=subprocess.PIPE)
-    proc.communicate(input=input_line)
+    cmd = vimode_settings['copy_clipboard_cmd']
+    proc = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE)
+    proc.communicate(input=input_line.encode())
 
 def key_p(buf, input_line, cur, count):
     """ Paste from system clipboard using xclip """
