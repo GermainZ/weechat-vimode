@@ -79,7 +79,14 @@ vimode_settings = {'no_warn': ("off", "don't warn about problematic "
                                           "must read input from stdin"),
                    'paste_clipboard_cmd': ("xclip -selection c -o",
                                            "command used to paste clipboard; "
-                                           "must output content to stdout")}
+                                           "must output content to stdout"),
+                   'imap_esc': ("", ("Use alternate mapping to enter Normal "
+                                       "mode while in Insert mode; having it "
+                                       "set to 'jk' is similar to "
+                                       "`:imap jk <Esc>` in vim")),
+                   'imap_esc_timeout': ("1000", ("Time in ms to wait for the "
+                                                 "imap_esc sequence to "
+                                                 "complete"))}
 
 
 # Regex patterns.
@@ -938,8 +945,35 @@ def cb_key_combo_default(data, signal, signal_data):
         set_mode("NORMAL")
         return weechat.WEECHAT_RC_OK_EAT
 
-    # Nothing to do here.
+    # Detect imap_esc presses if any.
     if mode == "INSERT":
+        imap_esc = vimode_settings['imap_esc']
+        if not imap_esc:
+            return weechat.WEECHAT_RC_OK
+        if (imap_esc.startswith(vi_buffer) and
+                imap_esc[len(vi_buffer):len(vi_buffer)+1] == keys):
+            vi_buffer += keys
+            weechat.bar_item_update("vi_buffer")
+            weechat.hook_timer(int(vimode_settings['imap_esc_timeout']), 0, 1,
+                               "cb_check_imap_esc", vi_buffer)
+        elif (vi_buffer and imap_esc.startswith(vi_buffer) and
+              imap_esc[len(vi_buffer):len(vi_buffer)+1] != keys):
+            vi_buffer = ""
+            weechat.bar_item_update("vi_buffer")
+        # imap_esc sequence detected -- remove the sequence keys from the
+        # Weechat input bar and enter Normal mode.
+        if imap_esc == vi_buffer:
+            buf = weechat.current_buffer()
+            input_line = weechat.buffer_get_string(buf, "input")
+            cur = weechat.buffer_get_integer(buf, "input_pos")
+            input_line = (input_line[:cur-len(imap_esc)+1] +
+                          input_line[cur:])
+            weechat.buffer_set(buf, "input", input_line)
+            set_cur(buf, input_line, cur-len(imap_esc)+1, False)
+            set_mode("NORMAL")
+            vi_buffer = ""
+            weechat.bar_item_update("vi_buffer")
+            return weechat.WEECHAT_RC_OK_EAT
         return weechat.WEECHAT_RC_OK
 
     # We're in Replace mode — allow "normal" key presses (e.g. "a") and
@@ -1064,6 +1098,14 @@ def cb_key_combo_default(data, signal, signal_data):
         vi_buffer = ""
         weechat.bar_item_update("vi_buffer")
     return weechat.WEECHAT_RC_OK_EAT
+
+def cb_check_imap_esc(data, remaining_calls):
+    """Clear the imap_esc sequence after some time if nothing was pressed."""
+    global vi_buffer
+    if vi_buffer == data:
+        vi_buffer = ""
+        weechat.bar_item_update("vi_buffer")
+    return weechat.WEECHAT_RC_OK
 
 
 # Callbacks.
