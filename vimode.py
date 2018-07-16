@@ -64,7 +64,8 @@ cmd_compl_text = ""
 cmd_text_orig = None
 # Index of current suggestion, used for completion.
 cmd_compl_pos = 0
-# Mode we're in. One of INSERT, NORMAL or REPLACE.
+# Mode we're in. One of INSERT, NORMAL, REPLACE or SEARCH.
+# SEARCH is only used if search_vim is enabled.
 mode = "INSERT"
 # Holds normal commands (e.g. "dd").
 vi_buffer = ""
@@ -92,7 +93,10 @@ vimode_settings = {'no_warn': ("off", "don't warn about problematic "
                                      "`:imap jk <Esc>` in vim")),
                    'imap_esc_timeout': ("1000", ("Time in ms to wait for the "
                                                  "imap_esc sequence to "
-                                                 "complete"))}
+                                                 "complete")),
+                   'search_vim': ("off", ("allow n/N usage after searching "
+                                             "(requires an extra <Enter> to "
+                                             "return to normal mode)"))}
 
 
 # Regex patterns.
@@ -827,7 +831,6 @@ VI_KEYS = {'j': "/window scroll_down",
            'I': key_I,
            'yy': key_yy,
            'p': key_p,
-           '/': "/input search_text_here",
            'gt': "/buffer -1",
            'K': "/buffer -1",
            'gT': "/buffer +1",
@@ -906,6 +909,8 @@ def cb_check_esc(data, remaining_calls):
     # works for py2 and not for py3.
     if abs(last_signal_time - float(data)) <= 0.000001:
         esc_pressed += 1
+        if mode == "SEARCH" or (cmd_text and cmd_text[0] == "/"):
+            weechat.command("", "/input search_stop_here")
         set_mode("NORMAL")
         # Cancel any current partial commands.
         vi_buffer = ""
@@ -1021,8 +1026,8 @@ def cb_key_combo_default(data, signal, signal_data):
         elif keys == "\x01M":
             weechat.hook_timer(1, 0, 1, "cb_exec_cmd", cmd_text)
             cmd_text = ""
-        # Tab key.
-        elif keys == "\x01I":
+        # Tab key. No completion when searching ("/").
+        elif keys == "\x01I" and cmd_text[0] == ":":
             if cmd_text_orig is None:
                 input_ = list(cmd_text)
                 del input_[0]
@@ -1052,8 +1057,13 @@ def cb_key_combo_default(data, signal, signal_data):
             weechat.command("", "/bar hide vi_cmd")
         return weechat.WEECHAT_RC_OK_EAT
     # Enter command mode.
-    elif keys == ":":
-        cmd_text += ":"
+    elif keys in [":", "/"]:
+        if keys == "/":
+            weechat.command("", "/input search_text_here")
+            if not weechat.config_string_to_boolean(
+                vimode_settings['search_vim']):
+                return weechat.WEECHAT_RC_OK
+        cmd_text += keys
         cmd_compl_text = ""
         cmd_text_orig = None
         cmd_compl_pos = 0
@@ -1142,6 +1152,42 @@ def cb_check_imap_esc(data, remaining_calls):
         weechat.bar_item_update("vi_buffer")
     return weechat.WEECHAT_RC_OK
 
+def cb_key_combo_search(data, signal, signal_data):
+    """Handle keys while search mode is active (if search_vim is enabled)."""
+    global cmd_text
+    if not weechat.config_string_to_boolean(vimode_settings['search_vim']):
+        return weechat.WEECHAT_RC_OK
+    if cmd_text and cmd_text[0] == "/":
+        if signal_data[0] != "\x01":
+            weechat.hook_timer(1, 0, 1, "cb_timer_update_search_bar", "")
+        elif signal_data == "\x01M":
+            set_mode("SEARCH")
+            cmd_text = ""
+            weechat.command("", "/bar hide vi_cmd")
+            return weechat.WEECHAT_RC_OK_EAT
+    elif mode == "SEARCH":
+        if signal_data == "\x01M":
+            set_mode("NORMAL")
+        else:
+            if signal_data == "n":
+                weechat.command("", "/input search_next")
+            elif signal_data == "N":
+                weechat.command("", "/input search_previous")
+            return weechat.WEECHAT_RC_OK_EAT
+    return weechat.WEECHAT_RC_OK
+
+def cb_timer_update_search_bar(data, remaining_calls):
+    """Update the search bar.
+
+    We use a timer so that "input" reflects the latest input. Accessing "input"
+    directly in `cb_key_combo_search()` would result in the latest keystroke
+    missing.
+    """
+    global cmd_text
+    buf = weechat.current_buffer()
+    cmd_text = "/" + weechat.buffer_get_string(buf, "input")
+    weechat.bar_item_update("cmd_text")
+    return weechat.WEECHAT_RC_OK
 
 # Callbacks.
 # ==========
@@ -1574,6 +1620,7 @@ if __name__ == "__main__":
                         "")
     weechat.hook_signal("key_pressed", "cb_key_pressed", "")
     weechat.hook_signal("key_combo_default", "cb_key_combo_default", "")
+    weechat.hook_signal("key_combo_search", "cb_key_combo_search", "")
     weechat.hook_signal("buffer_switch", "cb_update_line_numbers", "")
     weechat.hook_command("vimode", SCRIPT_DESC, "[help | bind_keys [--list]]",
                          "     help: show help\n"

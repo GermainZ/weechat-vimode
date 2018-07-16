@@ -65,6 +65,17 @@ take you to the appropriate line. You can then use the default key bindings to
 quote the message (`Q`, `m` and `q`).
 
 
+# Enabling vim-like search:
+By default, pressing `/` will simply launch WeeChat's search mode.
+
+Optionally, weechat-vimode can also handle `n`/`N` presses after pressing `/`
+and confirming the query. To enable this setting:
+`/set plugins.var.python.vimode.search_vim on`.
+Note that having this setting enabled will require an extra `<Enter>` press to
+exit search mode (where only `n`/`N` are recognized and handled) and return to
+Normal mode.
+
+
 # Current key bindings:
 
 ## Input line:
