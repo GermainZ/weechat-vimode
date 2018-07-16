@@ -36,9 +36,9 @@ Two bar items are provided:
 * **mode_indicator**: shows the currently active mode (e.g. `NORMAL`).
 * **vi_buffer**: shows partial commands (e.g. `df`).
 
-You can add them to your input bar. For example, using `iset.pl`:
+You can add them to your input bar. For example:
 
-* `/iset weechat.bar.input.items`
+* `/fset weechat.bar.input.items`
 * `<Alt+Enter>`
 * Add `[mode_indicator]+` at the start, and `,[vi_buffer]` at the end.
 * Final result example:
