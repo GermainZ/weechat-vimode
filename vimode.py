@@ -65,6 +65,9 @@ cmd_compl_text = ""
 cmd_text_orig = None
 # Index of current suggestion, used for completion.
 cmd_compl_pos = 0
+# Used for command-line mode history.
+cmd_history = []
+cmd_history_index = 0
 # Mode we're in. One of INSERT, NORMAL, REPLACE or SEARCH.
 # SEARCH is only used if search_vim is enabled.
 mode = "INSERT"
@@ -1047,7 +1050,7 @@ def cb_key_combo_default(data, signal, signal_data):
     Esc is handled a bit differently to avoid delays, see `cb_key_pressed()`.
     """
     global esc_pressed, vi_buffer, cmd_text, cmd_compl_text, cmd_text_orig, \
-           cmd_compl_pos
+           cmd_compl_pos, cmd_history_index
 
     # If Esc was pressed, strip the Esc part from the pressed keys.
     # Example: user presses Esc followed by i. This is detected as "\x01[i",
@@ -1148,7 +1151,23 @@ def cb_key_combo_default(data, signal, signal_data):
         # Return key.
         elif keys == "\x01M":
             weechat.hook_timer(1, 0, 1, "cb_exec_cmd", cmd_text)
+            if len(cmd_text) > 1 and (not cmd_history or
+                                      cmd_history[-1] != cmd_text):
+                cmd_history.append(cmd_text)
+            cmd_history_index = 0
             cmd_text = ""
+        # Up arrow.
+        elif keys == "\x01[[A":
+            if cmd_history_index > -len(cmd_history):
+                cmd_history_index -= 1
+                cmd_text = cmd_history[cmd_history_index]
+        # Down arrow.
+        elif keys == "\x01[[B":
+            if cmd_history_index < -1:
+                cmd_history_index += 1
+                cmd_text = cmd_history[cmd_history_index]
+            else:
+                cmd_text = ":"
         # Tab key. No completion when searching ("/").
         elif keys == "\x01I" and cmd_text[0] == ":":
             if cmd_text_orig is None:
