@@ -63,3 +63,20 @@ example:
     /key bind ctrl-M /input return
 
 You can always use `^J` instead of `<Enter>` if something goes wrong.
+
+# Custom key mappings examples (in Normal mode)
+
+To swap the behavior of `J` and `K`, you map one to the other:
+```
+:nmap J K
+:nmap K J
+```
+
+If you'd like `j`/`k`/`^j`/`^k` to behave like `↑`/`↓`/`^↑`/`^↓`, execute the
+following commands:
+```
+:nmap j <Up>
+:nmap k <Down>
+:nmap <C-j> <C-Up>
+:nmap <C-k> <C-Down>
+```
