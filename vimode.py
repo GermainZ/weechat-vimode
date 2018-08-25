@@ -22,6 +22,7 @@
 
 
 import csv
+import json
 import os
 import re
 import subprocess
@@ -96,7 +97,10 @@ vimode_settings = {'no_warn': ("off", "don't warn about problematic "
                                                  "complete")),
                    'search_vim': ("off", ("allow n/N usage after searching "
                                           "(requires an extra <Enter> to "
-                                          "return to normal mode)"))}
+                                          "return to normal mode)")),
+                   'user_mappings': ("", ("See `:help :map`. Please do not "
+                                          "modify this field manually unless "
+                                          "you know what you're doing."))}
 
 
 # Regex patterns.
@@ -111,6 +115,20 @@ REGEX_MOTION_UPPERCASE_B = REGEX_MOTION_UPPERCASE_E
 REGEX_MOTION_G_UPPERCASE_E = REGEX_MOTION_UPPERCASE_W
 REGEX_MOTION_CARRET = re.compile(r"\S")
 REGEX_INT = r"[0-9]"
+REGEX_MAP_KEYS_1 = {
+    re.compile("<([^>]*-)Left>", re.IGNORECASE): '<\\1\x01[[D>',
+    re.compile("<([^>]*-)Right>", re.IGNORECASE): '<\\1\x01[[C>',
+    re.compile("<([^>]*-)Up>", re.IGNORECASE): '<\\1\x01[[A>',
+    re.compile("<([^>]*-)Down>", re.IGNORECASE): '<\\1\x01[[B>',
+    re.compile("<Left>", re.IGNORECASE): '\x01[[D',
+    re.compile("<Right>", re.IGNORECASE): '\x01[[C',
+    re.compile("<Up>", re.IGNORECASE): '\x01[[A',
+    re.compile("<Down>", re.IGNORECASE): '\x01[[B'
+}
+REGEX_MAP_KEYS_2 = {
+    re.compile(r"<C-([^>]*)>", re.IGNORECASE): '\x01\\1',
+    re.compile(r"<M-([^>]*)>", re.IGNORECASE): '\x01[\\1'
+}
 
 # Regex used to detect problematic keybindings.
 # For example: meta-wmeta-s is bound by default to ``/window swap``.
@@ -125,6 +143,66 @@ REGEX_PROBLEMATIC_KEYBINDINGS = re.compile(r"meta-\w(meta|ctrl)")
 # Vi commands.
 # ------------
 
+def cmd_nmap(args):
+    """Add a user-defined key mapping.
+
+    Some (but not all) vim-like key codes are supported to simplify things for
+    the user: <Up>, <Down>, <Left>, <Right>, <C-...> and <M-...>.
+
+    See Also:
+        `cmd_unmap()`.
+    """
+    args = args.strip()
+    if not args:
+        mappings = vimode_settings['user_mappings']
+        if mappings:
+            weechat.prnt("", "User-defined key mappings:")
+            for key, mapping in mappings.items():
+                weechat.prnt("", "{} -> {}".format(key, mapping))
+        else:
+            weechat.prnt("", "nmap: no mapping found.")
+    elif not " " in args:
+        weechat.prnt("", "nmap syntax -> :nmap {lhs} {rhs}")
+    else:
+        key, mapping = args.split(" ", 1)
+        # First pass of replacements. We perform two passes as a simple way to
+        # avoid incorrect replacements due to dictionaries not being
+        # insertion-ordered prior to Python 3.7.
+        for regex, repl in REGEX_MAP_KEYS_1.items():
+            key = regex.sub(repl, key)
+            mapping = regex.sub(repl, mapping)
+        # Second pass of replacements.
+        for regex, repl in REGEX_MAP_KEYS_2.items():
+            key = regex.sub(repl, key)
+            mapping = regex.sub(repl, mapping)
+        mappings = vimode_settings['user_mappings']
+        mappings[key] = mapping
+        weechat.config_set_plugin('user_mappings', json.dumps(mappings))
+        vimode_settings['user_mappings'] = mappings
+
+def cmd_nunmap(args):
+    """Remove a user-defined key mapping.
+
+    See Also:
+        `cmd_map()`.
+    """
+    args = args.strip()
+    if not args:
+        weechat.prnt("", "nunmap syntax -> :unmap {lhs}")
+    else:
+        key = args
+        for regex, repl in REGEX_MAP_KEYS_1.items():
+            key = regex.sub(repl, key)
+        for regex, repl in REGEX_MAP_KEYS_2.items():
+            key = regex.sub(repl, key)
+        mappings = vimode_settings['user_mappings']
+        if key in mappings:
+            del mappings[key]
+            weechat.config_set_plugin('user_mappings', json.dumps(mappings))
+            vimode_settings['user_mappings'] = mappings
+        else:
+            weechat.prnt("", "nunmap: No such mapping")
+
 # See Also: `cb_exec_cmd()`.
 VI_COMMAND_GROUPS = {('h', 'help'): "/help",
                      ('qa', 'qall', 'quita', 'quitall'): "/exit",
@@ -136,7 +214,9 @@ VI_COMMAND_GROUPS = {('h', 'help'): "/help",
                      ('b#',): "/input jump_last_buffer_displayed",
                      ('b', 'bu', 'buf', 'buffer'): "/buffer",
                      ('sp', 'split'): "/window splith",
-                     ('vs', 'vsplit'): "/window splitv"}
+                     ('vs', 'vsplit'): "/window splitv",
+                     ('nm', 'nmap'): cmd_nmap,
+                     ('nun', 'nunmap'): cmd_nunmap}
 
 VI_COMMANDS = dict()
 for T, v in VI_COMMAND_GROUPS.items():
@@ -1086,13 +1166,24 @@ def cb_key_combo_default(data, signal, signal_data):
     if not matched:
         vi_buffer = ""
         return weechat.WEECHAT_RC_OK_EAT
+    # Check if it's a command (user defined key mapped to a :cmd).
+    if vi_keys.startswith(":"):
+        weechat.hook_timer(1, 0, 1, "cb_exec_cmd", "{} {}".format(vi_keys,
+                                                                  count))
+        vi_buffer = ""
+        return weechat.WEECHAT_RC_OK_EAT
+    # It's a WeeChat command (user defined key mapped to a /cmd).
+    if vi_keys.startswith("/"):
+        weechat.command("", vi_keys)
+        vi_buffer = ""
+        return weechat.WEECHAT_RC_OK_EAT
 
     buf = weechat.current_buffer()
     input_line = weechat.buffer_get_string(buf, "input")
     cur = weechat.buffer_get_integer(buf, "input_pos")
 
-    # It's a key. If the corresponding value is a string, we assume it's a
-    # WeeChat command. Otherwise, it's a method we'll call.
+    # It's a default mapping. If the corresponding value is a string, we assume
+    # it's a WeeChat command. Otherwise, it's a method we'll call.
     if vi_keys in VI_KEYS:
         if isinstance(VI_KEYS[vi_keys], str):
             for _ in range(max(count, 1)):
@@ -1246,7 +1337,15 @@ def cb_config(data, option, value):
     option_name = option.split(".")[-1]
     if option_name in vimode_settings:
         vimode_settings[option_name] = value
+    load_user_mappings()
     return weechat.WEECHAT_RC_OK
+
+def load_user_mappings():
+    """Load user-defined mappings."""
+    mappings = {}
+    if vimode_settings['user_mappings']:
+        mappings.update(json.loads(vimode_settings['user_mappings']))
+    vimode_settings['user_mappings'] = mappings
 
 
 # Command-line execution.
@@ -1281,7 +1380,6 @@ def cb_exec_cmd(data, remaining_calls):
         weechat.command("", "/exec -buffer shell %s" % data[1:])
     # Commands like `:22`. This should start cursor mode (``/cursor``) and take
     # us to the relevant line.
-    # TODO: look into possible replacement key bindings for: ← ↑ → ↓ Q m q.
     elif data.isdigit():
         line_number = int(data)
         hdata_window = weechat.hdata_get("window")
@@ -1299,7 +1397,10 @@ def cb_exec_cmd(data, remaining_calls):
         if len(data) == 2:
             args = data[1]
         if cmd in VI_COMMANDS:
-            weechat.command("", "%s %s" % (VI_COMMANDS[cmd], args))
+            if isinstance(VI_COMMANDS[cmd], str):
+                weechat.command("", "%s %s" % (VI_COMMANDS[cmd], args))
+            else:
+                VI_COMMANDS[cmd](args)
         else:
             # Check for commands not sepearated by space (e.g. "b2")
             for i in range(1, len(raw_data)):
@@ -1457,7 +1558,7 @@ def get_keys_and_count(combo):
         matched (bool): True if the combo has a (partial or full) match, False
             otherwise.
         combo (str): `combo` with the count removed. These are the actual keys
-            we should handle.
+            we should handle. User mappings are also expanded.
         count (int): count for `combo`.
     """
     # Look for a potential match (e.g. "d" might become "dw" or "dd" so we
@@ -1476,6 +1577,12 @@ def get_keys_and_count(combo):
                 break
         combo = combo.replace(count, "", 1)
         count = int(count)
+    # It's a user defined key. Expand it.
+    if combo in vimode_settings['user_mappings']:
+        combo = vimode_settings['user_mappings'][combo]
+    # It's a WeeChat command.
+    if not matched and combo.startswith("/"):
+        matched = True
     # Check against defined keys.
     if not matched:
         for key in VI_KEYS:
@@ -1598,6 +1705,8 @@ if __name__ == "__main__":
         weechat.config_set_desc_plugin(option,
                                        "%s (default: \"%s\")" % (value[1],
                                                                  value[0]))
+    # Load user-defined mappings.
+    load_user_mappings()
     # Warn the user about possible problems if necessary.
     if not weechat.config_string_to_boolean(vimode_settings['no_warn']):
         check_warnings()

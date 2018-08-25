@@ -184,6 +184,18 @@ Normal mode.
   `:s/pattern/repl/g`
                     Search/Replace \*
 * `:<num>`          Start cursor mode and go to line.
+* `:nmap`           List user-defined key mappings.
+* `:nmap {lhs} {rhs}`
+                    Map {lhs} to {rhs} for Normal mode.
+                    Some (but not all) vim-like key codes are supported: <Up>,
+                    <Down>, <Left>, <Right>, <C-...> and <M-...>.
+                    User-defined mappings are not followed (e.g. doing `:nmap z
+                    j` followed by `:nmap u z` will result in `u` not doing
+                    anything, since `z` is a user-defined mapping).
+                    Default vimode bindings can be used (e.g. `:nmap J K`
+                    followed by `:nmap K J` will flip `J` and `K` without
+                    resulting in a loop).
+* `:nunmap {lhs}`   Remove the mapping of {lhs} for Normal mode.
 * `:command`        All other commands will be passed to WeeChat (e.g.
                     ':script …' is equivalent to '/script …').
 
