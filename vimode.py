@@ -95,8 +95,8 @@ vimode_settings = {'no_warn': ("off", "don't warn about problematic "
                                                  "imap_esc sequence to "
                                                  "complete")),
                    'search_vim': ("off", ("allow n/N usage after searching "
-                                             "(requires an extra <Enter> to "
-                                             "return to normal mode)"))}
+                                          "(requires an extra <Enter> to "
+                                          "return to normal mode)"))}
 
 
 # Regex patterns.
@@ -1061,7 +1061,7 @@ def cb_key_combo_default(data, signal, signal_data):
         if keys == "/":
             weechat.command("", "/input search_text_here")
             if not weechat.config_string_to_boolean(
-                vimode_settings['search_vim']):
+                    vimode_settings['search_vim']):
                 return weechat.WEECHAT_RC_OK
         cmd_text += keys
         cmd_compl_text = ""
