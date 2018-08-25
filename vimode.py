@@ -78,6 +78,9 @@ last_signal_time = 0
 catching_keys_data = {'amount': 0}
 # Used for ; and , to store the last f/F/t/T motion.
 last_search_motion = {'motion': None, 'data': None}
+# Used for undo history.
+undo_history = {}
+undo_history_index = {}
 
 # Script options.
 vimode_settings = {'no_warn': ("off", "don't warn about problematic "
@@ -889,6 +892,39 @@ def key_comma(buf, input_line, cur, count):
     """
     key_semicolon(buf, input_line, cur, count, True)
 
+def key_u(buf, input_line, cur, count):
+    """Undo change `count` times.
+
+    See Also:
+        `key_base()`.
+    """
+    buf = weechat.current_buffer()
+    if buf not in undo_history:
+        return
+    for _ in range(max(count, 1)):
+        if undo_history_index[buf] > -len(undo_history[buf]):
+            undo_history_index[buf] -= 1
+            input_line = undo_history[buf][undo_history_index[buf]]
+            weechat.buffer_set(buf, "input", input_line)
+        else:
+            break
+
+def key_ctrl_r(buf, input_line, cur, count):
+    """Redo change `count` times.
+
+    See Also:
+        `key_base()`.
+    """
+    if buf not in undo_history:
+        return
+    for _ in range(max(count, 1)):
+        if undo_history_index[buf] < -1:
+            undo_history_index[buf] += 1
+            input_line = undo_history[buf][undo_history_index[buf]]
+            weechat.buffer_set(buf, "input", input_line)
+        else:
+            break
+
 
 # Vi key bindings.
 # ================
@@ -957,7 +993,9 @@ VI_KEYS = {'j': "/window scroll_down",
            '\x01Wv': "/window splitv",
            '\x01Wq': "/window merge",
            ';': key_semicolon,
-           ',': key_comma}
+           ',': key_comma,
+           'u': key_u,
+           '\x01R': key_ctrl_r}
 
 # Add alt-j<number> bindings.
 for i in range(10, 99):
@@ -1036,6 +1074,11 @@ def cb_key_combo_default(data, signal, signal_data):
     elif keys == "\x01@":
         set_mode("NORMAL")
         return weechat.WEECHAT_RC_OK_EAT
+
+    # Clear the undo history for this buffer on <Return>.
+    if keys == "\x01M":
+        buf = weechat.current_buffer()
+        clear_undo_history(buf)
 
     # Detect imap_esc presses if any.
     if mode == "INSERT":
@@ -1185,6 +1228,8 @@ def cb_key_combo_default(data, signal, signal_data):
     # It's a default mapping. If the corresponding value is a string, we assume
     # it's a WeeChat command. Otherwise, it's a method we'll call.
     if vi_keys in VI_KEYS:
+        if vi_keys not in ['u', '\x01R']:
+            add_undo_history(buf, input_line)
         if isinstance(VI_KEYS[vi_keys], str):
             for _ in range(max(count, 1)):
                 # This is to avoid crashing WeeChat on script reloads/unloads,
@@ -1214,6 +1259,7 @@ def cb_key_combo_default(data, signal, signal_data):
     elif (len(vi_keys) > 1 and
           vi_keys[0] in VI_OPERATORS and
           vi_keys[1:] in VI_MOTIONS):
+        add_undo_history(buf, input_line)
         if vi_keys[1:] in SPECIAL_CHARS:
             func = "motion_%s" % SPECIAL_CHARS[vi_keys[1:]]
         else:
@@ -1632,15 +1678,32 @@ def get_keys_and_count(combo):
 def set_mode(arg):
     """Set the current mode and update the bar mode indicator."""
     global mode
+    buf = weechat.current_buffer()
+    input_line = weechat.buffer_get_string(buf, "input")
+    if mode == "INSERT" and arg == "NORMAL":
+        add_undo_history(buf, input_line)
     mode = arg
     # If we're going to Normal mode, the cursor must move one character to the
     # left.
     if mode == "NORMAL":
-        buf = weechat.current_buffer()
-        input_line = weechat.buffer_get_string(buf, "input")
         cur = weechat.buffer_get_integer(buf, "input_pos")
         set_cur(buf, input_line, cur - 1, False)
     weechat.bar_item_update("mode_indicator")
+
+def add_undo_history(buf, input_line):
+    """Add an item to the per-buffer undo history."""
+    if buf in undo_history:
+        if not undo_history[buf] or undo_history[buf][-1] != input_line:
+            undo_history[buf].append(input_line)
+            undo_history_index[buf] = -1
+    else:
+        undo_history[buf] = ['', input_line]
+        undo_history_index[buf] = -1
+
+def clear_undo_history(buf):
+    """Clear the undo history for a given buffer."""
+    undo_history[buf] = ['']
+    undo_history_index[buf] = -1
 
 def print_warning(text):
     """Print warning, in red, to the current buffer."""

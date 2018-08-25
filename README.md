@@ -116,7 +116,7 @@ Normal mode.
 * `;`               Repeat latest f, t, F or T **[count]** times.
 * `,`               Repeat latest f, t, F or T in opposite direction
                     **[count]** times.
-* `r{char}`         Replace **[count]** characters with **{char}**` under and
+* `r{char}`         Replace **[count]** characters with **{char}** under and
                     after the cursor.
 * `R`               Enter Replace mode. Counts are not supported.
 * `dd`              Delete line.
@@ -131,6 +131,8 @@ Normal mode.
 * `p`               Put the text from the clipboard after the cursor. Uses
                     xclip by default. You can change this with the
                     `paste\_clipboard\_cmd` option.
+* `u`               Undo change **[count]** times.
+* `^R`              Redo change **[count]** times.
 * `nt`              Scroll nicklist up.
 * `nT`              Scroll nicklist down.
 
