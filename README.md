@@ -73,7 +73,7 @@ and confirming the query. To enable this setting:
 `/set plugins.var.python.vimode.search_vim on`.
 Note that having this setting enabled will require an extra `<Enter>` press to
 exit search mode (where only `n`/`N` are recognized and handled) and return to
-Normal mode.
+Normal mode. When in search mode, pressing `/` will start a new search.
 
 
 # Current key bindings:

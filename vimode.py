@@ -1310,6 +1310,12 @@ def cb_key_combo_search(data, signal, signal_data):
                 weechat.command("", "/input search_next")
             elif signal_data == "N":
                 weechat.command("", "/input search_previous")
+            # Start a new search.
+            elif signal_data == "/":
+                weechat.command("", "/input search_stop_here")
+                set_mode("NORMAL")
+                cmd_text += "/"
+                weechat.command("", "/input search_text_here")
             return weechat.WEECHAT_RC_OK_EAT
     return weechat.WEECHAT_RC_OK
 
