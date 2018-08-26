@@ -242,6 +242,14 @@ information). `&` in the replacement is also substituted by the pattern. If the
                     user-defined commands for copying/pasting, simple
                     tab-completion for Ex mode. Flipped J/K and gT/gt. Other
                     bug fixes and improvements.
+* version 0.7:      added support for user-defined key mappings (`:nmap {lhs}
+                    {rhs}`/`:nunmap {lhs}`), undo history, optional vim-like
+                    search, command-line mode history, and various
+                    customization options (mode indicator colors and
+                    prefix/suffix; line numbers prefix/suffix).
+                    Removed the separate command-line bar (the input bar is now
+                    used instead).
+                    Other bug fixes and improvements.
 
 For the full change log, please check the [list of commits][1].
 
