@@ -31,12 +31,15 @@ To switch to Normal mode, press `Esc` or `Ctrl+Space`. You can also use an
 alternate mapping while in Insert mode, similar to `:image jk <Esc>` in vim.
 See the `imap_esc` and `imap_esc_timeout` options for more details.
 
-Two bar items are provided:
+Three bar items are provided:
 
 * **mode_indicator**: shows the currently active mode (e.g. `NORMAL`).
 * **vi_buffer**: shows partial commands (e.g. `df`).
+* **cmd_completion**: shows completion suggestions for `:commands` (triggered
+  with `<Tab>`).
 
-You can add them to your input bar. For example:
+It is highly recommended you add **mode_indicator** and **vi_buffer* to your
+input bar. For example:
 
 * `/fset weechat.bar.input.items`
 * `<Alt+Enter>`
@@ -44,6 +47,14 @@ You can add them to your input bar. For example:
 * Final result example:
     `"[mode_indicator]+[input_prompt]+(away),[input_search],
     [input_paste],input_text,[vi_buffer]"`
+
+You can also add **cmd_completion** to the status bar:
+
+* `/fset weechat.bar.status.items`
+* `<Alt+Enter>`
+* Add `,cmd_completion` at the end.
+* Final result example:
+    `""[time],[buffer_last_number],[buffer_plugin],buffer_number+:+buffer_name+(buffer_modes)+{buffer_nicklist_count}+buffer_zoom+buffer_filter,scroll,[lag],[hotlist],completion,cmd_completion"`
 
 To switch back to Insert mode, you can use `i`, `a`, `A`, etc.
 

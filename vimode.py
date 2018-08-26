@@ -57,8 +57,6 @@ README_URL = GITHUB_BASE + "README.md"
 FAQ_KEYBINDINGS = GITHUB_BASE + "FAQ.md#problematic-key-bindings"
 FAQ_ESC = GITHUB_BASE + "FAQ.md#esc-key-not-being-detected-instantly"
 
-# Holds the text of the command-line mode (currently only Ex commands ":").
-cmd_text = ""
 # Holds the text of the tab-completions for the command-line mode.
 cmd_compl_text = ""
 # Holds the original text of the command-line mode, used for completion.
@@ -68,7 +66,9 @@ cmd_compl_pos = 0
 # Used for command-line mode history.
 cmd_history = []
 cmd_history_index = 0
-# Mode we're in. One of INSERT, NORMAL, REPLACE or SEARCH.
+# Used to store the content of the input line when going into COMMAND mode.
+input_line_backup = {}
+# Mode we're in. One of INSERT, NORMAL, REPLACE, COMMAND or SEARCH.
 # SEARCH is only used if search_vim is enabled.
 mode = "INSERT"
 # Holds normal commands (e.g. "dd").
@@ -104,14 +104,6 @@ vimode_settings = {'no_warn': ("off", "don't warn about problematic "
                    'search_vim': ("off", ("allow n/N usage after searching "
                                           "(requires an extra <Enter> to "
                                           "return to normal mode)")),
-                   'cmd_bar_behavior': ("default",
-                                        ("command-line bar behavior: always "
-                                         "visible, always hidden, or shown "
-                                         "when needed (visible/hidden/default)"
-                                         "; if set to 'hidden', consider "
-                                         "adding the `cmd_text` bar item "
-                                         "somewhere visible (e.g. to the "
-                                         "`input` bar)")),
                    'user_mappings': ("", ("see the `:nmap` command in the "
                                           "README for more info; please do not"
                                           " modify this field manually unless "
@@ -1034,19 +1026,16 @@ def cb_key_pressed(data, signal, signal_data):
 
 def cb_check_esc(data, remaining_calls):
     """Check if the Esc key was pressed and change the mode accordingly."""
-    global esc_pressed, vi_buffer, cmd_text, catching_keys_data
+    global esc_pressed, vi_buffer, catching_keys_data
     # Not perfect, would be better to use direct comparison (==) but that only
     # works for py2 and not for py3.
     if abs(last_signal_time - float(data)) <= 0.000001:
         esc_pressed += 1
-        if mode == "SEARCH" or (cmd_text and cmd_text[0] == "/"):
+        if mode == "SEARCH":
             weechat.command("", "/input search_stop_here")
         set_mode("NORMAL")
         # Cancel any current partial commands.
         vi_buffer = ""
-        cmd_text = ""
-        if vimode_settings['cmd_bar_behavior'] == "default":
-            weechat.command("", "/bar hide vi_cmd")
         catching_keys_data = {'amount': 0}
         weechat.bar_item_update("vi_buffer")
     return weechat.WEECHAT_RC_OK
@@ -1059,7 +1048,7 @@ def cb_key_combo_default(data, signal, signal_data):
 
     Esc is handled a bit differently to avoid delays, see `cb_key_pressed()`.
     """
-    global esc_pressed, vi_buffer, cmd_text, cmd_compl_text, cmd_text_orig, \
+    global esc_pressed, vi_buffer, cmd_compl_text, cmd_text_orig, \
            cmd_compl_pos, cmd_history_index
 
     # If Esc was pressed, strip the Esc part from the pressed keys.
@@ -1148,29 +1137,29 @@ def cb_key_combo_default(data, signal, signal_data):
         return weechat.WEECHAT_RC_OK_EAT
 
     # We're in command-line mode.
-    if cmd_text:
-        # Backspace key.
-        if keys == "\x01?":
-            # Remove the last character from our command line.
-            cmd_text = list(cmd_text)
-            del cmd_text[-1]
-            cmd_text = "".join(cmd_text)
-            cmd_compl_text = ""
-            cmd_text_orig = None
-            cmd_compl_pos = 0
+    if mode == "COMMAND":
+        buf = weechat.current_buffer()
+        cmd_text = weechat.buffer_get_string(buf, "input")
+        weechat.hook_timer(1, 0, 1, "cb_check_cmd_mode", "")
         # Return key.
-        elif keys == "\x01M":
+        if keys == "\x01M":
             weechat.hook_timer(1, 0, 1, "cb_exec_cmd", cmd_text)
             if len(cmd_text) > 1 and (not cmd_history or
                                       cmd_history[-1] != cmd_text):
                 cmd_history.append(cmd_text)
             cmd_history_index = 0
-            cmd_text = ""
+            set_mode("NORMAL")
+            buf = weechat.current_buffer()
+            input_line = input_line_backup[buf]['input_line']
+            weechat.buffer_set(buf, "input", input_line)
+            set_cur(buf, input_line, input_line_backup[buf]['cur'], False)
         # Up arrow.
         elif keys == "\x01[[A":
             if cmd_history_index > -len(cmd_history):
                 cmd_history_index -= 1
                 cmd_text = cmd_history[cmd_history_index]
+            weechat.buffer_set(buf, "input", cmd_text)
+            set_cur(buf, cmd_text, len(cmd_text), False)
         # Down arrow.
         elif keys == "\x01[[B":
             if cmd_history_index < -1:
@@ -1179,6 +1168,8 @@ def cb_key_combo_default(data, signal, signal_data):
             else:
                 cmd_history_index = 0
                 cmd_text = ":"
+            weechat.buffer_set(buf, "input", cmd_text)
+            set_cur(buf, cmd_text, len(cmd_text), False)
         # Tab key. No completion when searching ("/").
         elif keys == "\x01I" and cmd_text[0] == ":":
             if cmd_text_orig is None:
@@ -1197,19 +1188,19 @@ def cb_key_combo_default(data, signal, signal_data):
                     {}, {}, {})
                 cmd_compl_text = ", ".join(cmd_compl_list)
                 cmd_compl_pos = (cmd_compl_pos + 1) % len(cmd_compl_list)
+                weechat.buffer_set(buf, "input", cmd_text)
+                set_cur(buf, cmd_text, len(cmd_text), False)
         # Input.
-        elif len(keys) == 1:
-            cmd_text += keys
+        else:
             cmd_compl_text = ""
             cmd_text_orig = None
             cmd_compl_pos = 0
-        # Update (and maybe hide) the bar item.
-        weechat.bar_item_update("cmd_text")
         weechat.bar_item_update("cmd_completion")
-        if not cmd_text:
-            if vimode_settings['cmd_bar_behavior'] == "default":
-                weechat.command("", "/bar hide vi_cmd")
-        return weechat.WEECHAT_RC_OK_EAT
+        if keys in ["\x01M", "\x01[[A", "\x01[[B"]:
+            cmd_compl_text = ""
+            return weechat.WEECHAT_RC_OK_EAT
+        else:
+            return weechat.WEECHAT_RC_OK
     # Enter command mode.
     elif keys in [":", "/"]:
         if keys == "/":
@@ -1217,13 +1208,18 @@ def cb_key_combo_default(data, signal, signal_data):
             if not weechat.config_string_to_boolean(
                     vimode_settings['search_vim']):
                 return weechat.WEECHAT_RC_OK
-        cmd_text += keys
+        else:
+            buf = weechat.current_buffer()
+            cur = weechat.buffer_get_integer(buf, "input_pos")
+            input_line = weechat.buffer_get_string(buf, "input")
+            input_line_backup[buf] = {'input_line': input_line, 'cur': cur}
+            input_line = ":"
+            weechat.buffer_set(buf, "input", input_line)
+            set_cur(buf, input_line, 1, False)
+        set_mode("COMMAND")
         cmd_compl_text = ""
         cmd_text_orig = None
         cmd_compl_pos = 0
-        if vimode_settings['cmd_bar_behavior'] == "default":
-            weechat.command("", "/bar show vi_cmd")
-        weechat.bar_item_update("cmd_text")
         return weechat.WEECHAT_RC_OK_EAT
 
     # Add key to the buffer.
@@ -1323,18 +1319,11 @@ def cb_check_imap_esc(data, remaining_calls):
 
 def cb_key_combo_search(data, signal, signal_data):
     """Handle keys while search mode is active (if search_vim is enabled)."""
-    global cmd_text
     if not weechat.config_string_to_boolean(vimode_settings['search_vim']):
         return weechat.WEECHAT_RC_OK
-    if cmd_text and cmd_text[0] == "/":
-        if signal_data[0] != "\x01":
-            weechat.hook_timer(1, 0, 1, "cb_timer_update_search_bar", "")
-        elif signal_data == "\x01M":
+    if mode == "COMMAND":
+        if signal_data == "\x01M":
             set_mode("SEARCH")
-            cmd_text = ""
-            weechat.bar_item_update("cmd_text")
-            if vimode_settings['cmd_bar_behavior'] == "default":
-                weechat.command("", "/bar hide vi_cmd")
             return weechat.WEECHAT_RC_OK_EAT
     elif mode == "SEARCH":
         if signal_data == "\x01M":
@@ -1348,22 +1337,8 @@ def cb_key_combo_search(data, signal, signal_data):
             elif signal_data == "/":
                 weechat.command("", "/input search_stop_here")
                 set_mode("NORMAL")
-                cmd_text += "/"
                 weechat.command("", "/input search_text_here")
             return weechat.WEECHAT_RC_OK_EAT
-    return weechat.WEECHAT_RC_OK
-
-def cb_timer_update_search_bar(data, remaining_calls):
-    """Update the search bar.
-
-    We use a timer so that "input" reflects the latest input. Accessing "input"
-    directly in `cb_key_combo_search()` would result in the latest keystroke
-    missing.
-    """
-    global cmd_text
-    buf = weechat.current_buffer()
-    cmd_text = "/" + weechat.buffer_get_string(buf, "input")
-    weechat.bar_item_update("cmd_text")
     return weechat.WEECHAT_RC_OK
 
 # Callbacks.
@@ -1375,10 +1350,6 @@ def cb_timer_update_search_bar(data, remaining_calls):
 def cb_vi_buffer(data, item, window):
     """Return the content of the vi buffer (pressed keys on hold)."""
     return vi_buffer
-
-def cb_cmd_text(data, item, window):
-    """Return the text of the command line."""
-    return cmd_text
 
 def cb_cmd_completion(data, item, window):
     """Return the text of the command line."""
@@ -1425,12 +1396,6 @@ def cb_config(data, option, value):
         vimode_settings[option_name] = value
     if option_name == 'user_mappings':
         load_user_mappings()
-    # Update vi_cmd bar behavior.
-    if option_name == 'cmd_bar_behavior':
-        if value == "visible":
-            weechat.command("", "/bar show vi_cmd")
-        else:
-            weechat.command("", "/bar hide vi_cmd")
     return weechat.WEECHAT_RC_OK
 
 def load_user_mappings():
@@ -1737,6 +1702,14 @@ def set_mode(arg):
         set_cur(buf, input_line, cur - 1, False)
     weechat.bar_item_update("mode_indicator")
 
+def cb_check_cmd_mode(data, remaining_calls):
+    """Exit command mode if user erases the leading ':' character."""
+    buf = weechat.current_buffer()
+    cmd_text = weechat.buffer_get_string(buf, "input")
+    if not cmd_text:
+        set_mode("NORMAL")
+    return weechat.WEECHAT_RC_OK
+
 def add_undo_history(buf, input_line):
     """Add an item to the per-buffer undo history."""
     if buf in undo_history:
@@ -1822,16 +1795,9 @@ if __name__ == "__main__":
         check_warnings()
     # Create bar items and setup hooks.
     weechat.bar_item_new("mode_indicator", "cb_mode_indicator", "")
-    weechat.bar_item_new("cmd_text", "cb_cmd_text", "")
     weechat.bar_item_new("cmd_completion", "cb_cmd_completion", "")
     weechat.bar_item_new("vi_buffer", "cb_vi_buffer", "")
     weechat.bar_item_new("line_numbers", "cb_line_numbers", "")
-    weechat.bar_new("vi_cmd", "off", "0", "root", "", "bottom", "vertical",
-                    "vertical", "0", "0", "default", "default", "default", "0",
-                    "[cmd_completion],cmd_text")
-    # We need to specifically update the vi_cmd's "items" for existing users.
-    vi_cmd_bar = weechat.bar_search("vi_cmd")
-    weechat.bar_set(vi_cmd_bar, "items", "[cmd_completion],cmd_text")
     weechat.bar_new("vi_line_numbers", "on", "0", "window", "", "left",
                     "vertical", "vertical", "0", "0", "default", "default",
                     "default", "0", "line_numbers")
@@ -1852,8 +1818,6 @@ if __name__ == "__main__":
                          ("This command can be used for key bindings to go to "
                           "normal mode."),
                          "", "", "", "cb_vimode_go_to_normal", "")
-    # vi_cmd bar behavior.
-    if vimode_settings['cmd_bar_behavior'] == "hidden":
-        weechat.command("", "/bar hide vi_cmd")
-    elif vimode_settings['cmd_bar_behavior'] == "visible":
-        weechat.command("", "/bar show vi_cmd")
+    # Remove obsolete bar.
+    vi_cmd_bar = weechat.bar_search("vi_cmd")
+    weechat.bar_remove(vi_cmd_bar)
