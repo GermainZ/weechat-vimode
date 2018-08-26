@@ -84,30 +84,59 @@ last_search_motion = {'motion': None, 'data': None}
 # Used for undo history.
 undo_history = {}
 undo_history_index = {}
+# Holds mode colors (loaded from vimode_settings).
+mode_colors = {}
 
 # Script options.
-vimode_settings = {'no_warn': ("off", "don't warn about problematic "
-                               "keybindings and tmux/screen"),
-                   'copy_clipboard_cmd': ("xclip -selection c",
-                                          "command used to copy to clipboard; "
-                                          "must read input from stdin"),
-                   'paste_clipboard_cmd': ("xclip -selection c -o",
-                                           "command used to paste clipboard; "
-                                           "must output content to stdout"),
-                   'imap_esc': ("", ("use alternate mapping to enter Normal "
-                                     "mode while in Insert mode; having it "
-                                     "set to 'jk' is similar to "
-                                     "`:imap jk <Esc>` in vim")),
-                   'imap_esc_timeout': ("1000", ("time in ms to wait for the "
-                                                 "imap_esc sequence to "
-                                                 "complete")),
-                   'search_vim': ("off", ("allow n/N usage after searching "
-                                          "(requires an extra <Enter> to "
-                                          "return to normal mode)")),
-                   'user_mappings': ("", ("see the `:nmap` command in the "
-                                          "README for more info; please do not"
-                                          " modify this field manually unless "
-                                          "you know what you're doing"))}
+vimode_settings = {
+    'no_warn': ("off", ("don't warn about problematic keybindings and "
+                        "tmux/screen")),
+    'copy_clipboard_cmd': ("xclip -selection c",
+                           ("command used to copy to clipboard; must read "
+                            "input from stdin")),
+    'paste_clipboard_cmd': ("xclip -selection c -o",
+                            ("command used to paste clipboard; must output "
+                             "content to stdout")),
+    'imap_esc': ("", ("use alternate mapping to enter Normal mode while in "
+                      "Insert mode; having it set to 'jk' is similar to "
+                      "`:imap jk <Esc>` in vim")),
+    'imap_esc_timeout': ("1000", ("time in ms to wait for the imap_esc "
+                                  "sequence to complete")),
+    'search_vim': ("off", ("allow n/N usage after searching (requires an extra"
+                           " <Enter> to return to normal mode)")),
+    'user_mappings': ("", ("see the `:nmap` command in the README for more "
+                           "info; please do not modify this field manually "
+                           "unless you know what you're doing")),
+    'mode_indicator_prefix': ("", "prefix for the bar item mode_indicator"),
+    'mode_indicator_suffix': ("", "suffix for the bar item mode_indicator"),
+    'mode_indicator_normal_color': ("white",
+                                    "color for mode indicator in Normal mode"),
+    'mode_indicator_normal_color_bg': ("gray",
+                                       ("background color for mode indicator "
+                                        "in Normal mode")),
+    'mode_indicator_insert_color': ("white",
+                                    "color for mode indicator in Insert mode"),
+    'mode_indicator_insert_color_bg': ("blue",
+                                       ("background color for mode indicator "
+                                        "in Insert mode")),
+    'mode_indicator_replace_color': ("white",
+                                     "color for mode indicator in Replace mode"),
+    'mode_indicator_replace_color_bg': ("red",
+                                        ("background color for mode indicator "
+                                         "in Replace mode")),
+    'mode_indicator_cmd_color': ("white",
+                                 "color for mode indicator in Command mode"),
+    'mode_indicator_cmd_color_bg': ("cyan",
+                                    ("background color for mode indicator in "
+                                     "Command mode")),
+    'mode_indicator_search_color': ("white",
+                                    "color for mode indicator in Search mode"),
+    'mode_indicator_search_color_bg': ("magenta",
+                                       ("background color for mode indicator "
+                                        "in Search mode")),
+    'line_number_prefix': ("", "prefix for line numbers"),
+    'line_number_suffix': (" ", "suffix for line numbers")
+}
 
 
 # Regex patterns.
@@ -1356,15 +1385,19 @@ def cb_cmd_completion(data, item, window):
     return cmd_compl_text
 
 def cb_mode_indicator(data, item, window):
-    """Return the current mode (INSERT/NORMAL/REPLACE)."""
-    return mode
+    """Return the current mode (INSERT/NORMAL/REPLACE/...)."""
+    return "{}{}{}{}{}".format(
+        weechat.color(mode_colors[mode]),
+        vimode_settings['mode_indicator_prefix'], mode,
+        vimode_settings['mode_indicator_suffix'], weechat.color("reset"))
 
 def cb_line_numbers(data, item, window):
     """Fill the line numbers bar item."""
     bar_height = weechat.window_get_integer(window, "win_chat_height")
     content = ""
     for i in range(1, bar_height + 1):
-        content += "%s \n" % i
+        content += "{}{}{}\n".format(vimode_settings['line_number_prefix'], i,
+                                     vimode_settings['line_number_suffix'])
     return content
 
 # Callbacks for the line numbers bar.
@@ -1396,7 +1429,28 @@ def cb_config(data, option, value):
         vimode_settings[option_name] = value
     if option_name == 'user_mappings':
         load_user_mappings()
+    if "_color" in option_name:
+        load_mode_colors()
     return weechat.WEECHAT_RC_OK
+
+def load_mode_colors():
+    mode_colors.update({
+        'NORMAL': "{},{}".format(
+            vimode_settings['mode_indicator_normal_color'],
+            vimode_settings['mode_indicator_normal_color_bg']),
+        'INSERT': "{},{}".format(
+            vimode_settings['mode_indicator_insert_color'],
+            vimode_settings['mode_indicator_insert_color_bg']),
+        'REPLACE': "{},{}".format(
+            vimode_settings['mode_indicator_replace_color'],
+            vimode_settings['mode_indicator_replace_color_bg']),
+        'COMMAND': "{},{}".format(
+            vimode_settings['mode_indicator_cmd_color'],
+            vimode_settings['mode_indicator_cmd_color_bg']),
+        'SEARCH': "{},{}".format(
+            vimode_settings['mode_indicator_search_color'],
+            vimode_settings['mode_indicator_search_color_bg'])
+    })
 
 def load_user_mappings():
     """Load user-defined mappings."""
@@ -1788,8 +1842,8 @@ if __name__ == "__main__":
         weechat.config_set_desc_plugin(option,
                                        "%s (default: \"%s\")" % (value[1],
                                                                  value[0]))
-    # Load user-defined mappings.
     load_user_mappings()
+    load_mode_colors()
     # Warn the user about possible problems if necessary.
     if not weechat.config_string_to_boolean(vimode_settings['no_warn']):
         check_warnings()

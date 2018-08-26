@@ -33,7 +33,8 @@ See the `imap_esc` and `imap_esc_timeout` options for more details.
 
 Three bar items are provided:
 
-* **mode_indicator**: shows the currently active mode (e.g. `NORMAL`).
+* **mode_indicator**: shows the currently active mode (e.g. `NORMAL`). Has
+  various customization options (see `/fset vimode.mode_indicator`).
 * **vi_buffer**: shows partial commands (e.g. `df`).
 * **cmd_completion**: shows completion suggestions for `:commands` (triggered
   with `<Tab>`).
@@ -43,9 +44,9 @@ input bar. For example:
 
 * `/fset weechat.bar.input.items`
 * `<Alt+Enter>`
-* Add `[mode_indicator]+` at the start, and `,[vi_buffer]` at the end.
+* Add `mode_indicator+` at the start, and `,[vi_buffer]` at the end.
 * Final result example:
-    `"[mode_indicator]+[input_prompt]+(away),[input_search],
+    `"mode_indicator+[input_prompt]+(away),[input_search],
     [input_paste],input_text,[vi_buffer]"`
 
 You can also add **cmd_completion** to the status bar:
@@ -74,6 +75,8 @@ for it to be displayed correctly, but the defaults should suit most users.)
 It is useful for `:<num>` commands, which will start WeeChat's cursor mode and
 take you to the appropriate line. You can then use the default key bindings to
 quote the message (`Q`, `m` and `q`).
+
+You can customize the prefix/suffix for each line: `/fset vimode.line_number`.
 
 
 # Enabling vim-like search:
