@@ -1331,6 +1331,7 @@ def cb_key_combo_search(data, signal, signal_data):
         elif signal_data == "\x01M":
             set_mode("SEARCH")
             cmd_text = ""
+            weechat.bar_item_update("cmd_text")
             if vimode_settings['cmd_bar_behavior'] == "default":
                 weechat.command("", "/bar hide vi_cmd")
             return weechat.WEECHAT_RC_OK_EAT
