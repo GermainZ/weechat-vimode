@@ -94,11 +94,11 @@ vimode_settings = {'no_warn': ("off", "don't warn about problematic "
                    'paste_clipboard_cmd': ("xclip -selection c -o",
                                            "command used to paste clipboard; "
                                            "must output content to stdout"),
-                   'imap_esc': ("", ("Use alternate mapping to enter Normal "
+                   'imap_esc': ("", ("use alternate mapping to enter Normal "
                                      "mode while in Insert mode; having it "
                                      "set to 'jk' is similar to "
                                      "`:imap jk <Esc>` in vim")),
-                   'imap_esc_timeout': ("1000", ("Time in ms to wait for the "
+                   'imap_esc_timeout': ("1000", ("time in ms to wait for the "
                                                  "imap_esc sequence to "
                                                  "complete")),
                    'search_vim': ("off", ("allow n/N usage after searching "
@@ -111,10 +111,11 @@ vimode_settings = {'no_warn': ("off", "don't warn about problematic "
                                          "; if set to 'hidden', consider "
                                          "adding the `cmd_text` bar item "
                                          "somewhere visible (e.g. to the "
-                                         "`input` bar).")),
-                   'user_mappings': ("", ("See `:help :map`. Please do not "
-                                          "modify this field manually unless "
-                                          "you know what you're doing."))}
+                                         "`input` bar)")),
+                   'user_mappings': ("", ("see the `:nmap` command in the "
+                                          "README for more info; please do not"
+                                          " modify this field manually unless "
+                                          "you know what you're doing"))}
 
 
 # Regex patterns.
@@ -1420,7 +1421,8 @@ def cb_config(data, option, value):
     option_name = option.split(".")[-1]
     if option_name in vimode_settings:
         vimode_settings[option_name] = value
-    load_user_mappings()
+    if option_name == 'user_mappings':
+        load_user_mappings()
     # Update vi_cmd bar behavior.
     if option_name == 'cmd_bar_behavior':
         if value == "visible":
