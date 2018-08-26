@@ -1177,6 +1177,7 @@ def cb_key_combo_default(data, signal, signal_data):
                 cmd_history_index += 1
                 cmd_text = cmd_history[cmd_history_index]
             else:
+                cmd_history_index = 0
                 cmd_text = ":"
         # Tab key. No completion when searching ("/").
         elif keys == "\x01I" and cmd_text[0] == ":":
