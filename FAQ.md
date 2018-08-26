@@ -80,3 +80,17 @@ following commands:
 :nmap <C-j> <C-Up>
 :nmap <C-k> <C-Down>
 ```
+
+# Command-line bar behavior
+
+The default behavior for the command-line bar is for it to be hidden when it
+doesn't contain any text.
+
+If you'd like to keep the command-line bar visible at all times, you can do so
+as such: `/fset plugins.var.python.vimode.cmd_bar_behavior visible`.
+
+You can also keep the command-line bar permanently hidden if you prefer: `/fset
+plugins.var.python.vimode.cmd_bar_behavior hidden`. This can be useful if you
+don't want any wasted space, but please take care to add the `cmd_text` bar
+item to some visible bar, such as the `input` bar. To do so, modify
+`weechat.bar.input.items` and add `cmd_text` to it somewhere.

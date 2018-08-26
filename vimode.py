@@ -104,6 +104,14 @@ vimode_settings = {'no_warn': ("off", "don't warn about problematic "
                    'search_vim': ("off", ("allow n/N usage after searching "
                                           "(requires an extra <Enter> to "
                                           "return to normal mode)")),
+                   'cmd_bar_behavior': ("default",
+                                        ("command-line bar behavior: always "
+                                         "visible, always hidden, or shown "
+                                         "when needed (visible/hidden/default)"
+                                         "; if set to 'hidden', consider "
+                                         "adding the `cmd_text` bar item "
+                                         "somewhere visible (e.g. to the "
+                                         "`input` bar).")),
                    'user_mappings': ("", ("See `:help :map`. Please do not "
                                           "modify this field manually unless "
                                           "you know what you're doing."))}
@@ -1036,7 +1044,8 @@ def cb_check_esc(data, remaining_calls):
         # Cancel any current partial commands.
         vi_buffer = ""
         cmd_text = ""
-        weechat.command("", "/bar hide vi_cmd")
+        if vimode_settings['cmd_bar_behavior'] == "default":
+            weechat.command("", "/bar hide vi_cmd")
         catching_keys_data = {'amount': 0}
         weechat.bar_item_update("vi_buffer")
     return weechat.WEECHAT_RC_OK
@@ -1196,7 +1205,8 @@ def cb_key_combo_default(data, signal, signal_data):
         weechat.bar_item_update("cmd_text")
         weechat.bar_item_update("cmd_completion")
         if not cmd_text:
-            weechat.command("", "/bar hide vi_cmd")
+            if vimode_settings['cmd_bar_behavior'] == "default":
+                weechat.command("", "/bar hide vi_cmd")
         return weechat.WEECHAT_RC_OK_EAT
     # Enter command mode.
     elif keys in [":", "/"]:
@@ -1209,7 +1219,8 @@ def cb_key_combo_default(data, signal, signal_data):
         cmd_compl_text = ""
         cmd_text_orig = None
         cmd_compl_pos = 0
-        weechat.command("", "/bar show vi_cmd")
+        if vimode_settings['cmd_bar_behavior'] == "default":
+            weechat.command("", "/bar show vi_cmd")
         weechat.bar_item_update("cmd_text")
         return weechat.WEECHAT_RC_OK_EAT
 
@@ -1319,7 +1330,8 @@ def cb_key_combo_search(data, signal, signal_data):
         elif signal_data == "\x01M":
             set_mode("SEARCH")
             cmd_text = ""
-            weechat.command("", "/bar hide vi_cmd")
+            if vimode_settings['cmd_bar_behavior'] == "default":
+                weechat.command("", "/bar hide vi_cmd")
             return weechat.WEECHAT_RC_OK_EAT
     elif mode == "SEARCH":
         if signal_data == "\x01M":
@@ -1409,6 +1421,12 @@ def cb_config(data, option, value):
     if option_name in vimode_settings:
         vimode_settings[option_name] = value
     load_user_mappings()
+    # Update vi_cmd bar behavior.
+    if option_name == 'cmd_bar_behavior':
+        if value == "visible":
+            weechat.command("", "/bar show vi_cmd")
+        else:
+            weechat.command("", "/bar hide vi_cmd")
     return weechat.WEECHAT_RC_OK
 
 def load_user_mappings():
@@ -1830,3 +1848,8 @@ if __name__ == "__main__":
                          ("This command can be used for key bindings to go to "
                           "normal mode."),
                          "", "", "", "cb_vimode_go_to_normal", "")
+    # vi_cmd bar behavior.
+    if vimode_settings['cmd_bar_behavior'] == "hidden":
+        weechat.command("", "/bar hide vi_cmd")
+    elif vimode_settings['cmd_bar_behavior'] == "visible":
+        weechat.command("", "/bar show vi_cmd")
