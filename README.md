@@ -39,7 +39,7 @@ Three bar items are provided:
 * **cmd_completion**: shows completion suggestions for `:commands` (triggered
   with `<Tab>`).
 
-It is highly recommended you add **mode_indicator** and **vi_buffer* to your
+It is highly recommended you add **mode_indicator** and **vi_buffer** to your
 input bar. For example:
 
 * `/fset weechat.bar.input.items`
@@ -59,7 +59,7 @@ You can also add **cmd_completion** to the status bar:
 
 To switch back to Insert mode, you can use `i`, `a`, `A`, etc.
 
-To execute an Ex command, simply precede it with a ':' while in Normal mode,
+To execute an Ex command, simply precede it with a ":" while in Normal mode,
 for example: ":h" or ":s/foo/bar".
 
 
@@ -67,7 +67,7 @@ for example: ":h" or ":s/foo/bar".
 The `vi_line_numbers` bar (comes with a bar item) is provided but hidden by
 default, and can be shown to display line numbers next to the chat window
 (similar to vi's `:set number`). You can show it by using the command:
-`/set weechat.bar.vi_line_numbers.hidden on`.
+`/set weechat.bar.vi_line_numbers.hidden off`.
 
 (Depending on your configuration, you may need to adjust some of its settings
 for it to be displayed correctly, but the defaults should suit most users.)
@@ -213,7 +213,7 @@ Normal mode. When in search mode, pressing `/` will start a new search.
                     resulting in a loop).
 * `:nunmap {lhs}`   Remove the mapping of {lhs} for Normal mode.
 * `:command`        All other commands will be passed to WeeChat (e.g.
-                    ':script …' is equivalent to '/script …').
+                    ":script …" is equivalent to "/script …").
 
 \* Supports regex (check docs for the Python re module for more
 information). `&` in the replacement is also substituted by the pattern. If the
