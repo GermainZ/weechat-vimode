@@ -1060,7 +1060,7 @@ def cb_check_esc(data, remaining_calls):
     # works for py2 and not for py3.
     if abs(last_signal_time - float(data)) <= 0.000001:
         esc_pressed += 1
-        if mode == "SEARCH":
+        if mode == "SEARCH" or mode == "COMMAND":
             weechat.command("", "/input search_stop_here")
         set_mode("NORMAL")
         # Cancel any current partial commands.
