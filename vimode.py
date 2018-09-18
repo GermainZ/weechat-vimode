@@ -915,6 +915,8 @@ def key_semicolon(buf, input_line, cur, count, swap=False):
                            'count': count,
                            'new_cur': 0,
                            'buf': buf})
+    if not last_search_motion['motion']:
+        return
     # Swap the motion's case if called from key_comma.
     if swap:
         motion = last_search_motion['motion'].swapcase()
