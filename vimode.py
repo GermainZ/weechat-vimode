@@ -31,6 +31,7 @@ try:
 except ImportError:
     from io import StringIO
 import time
+import sys
 
 import weechat
 
@@ -413,7 +414,10 @@ def operator_y(buf, input_line, pos1, pos2, _):
     end = max(pos1, pos2)
     cmd = vimode_settings['copy_clipboard_cmd']
     proc = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE)
-    proc.communicate(input=input_line[start:end].encode())
+    if sys.version_info > (3,):
+        proc.communicate(input=input_line[start:end].encode())
+    else:
+        proc.communicate(input=input_line[start:end])
 
 
 # Motions:
@@ -741,7 +745,10 @@ def key_yy(buf, input_line, cur, count):
     """
     cmd = vimode_settings['copy_clipboard_cmd']
     proc = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE)
-    proc.communicate(input=input_line.encode())
+    if sys.version_info > (3,):
+        proc.communicate(input=input_line.encode())
+    else:
+        proc.communicate(input=input_line)
 
 def key_p(buf, input_line, cur, count):
     """Paste text.
