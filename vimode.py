@@ -198,7 +198,7 @@ def cmd_nmap(args):
                 weechat.prnt("", "{} -> {}".format(key, mapping))
         else:
             weechat.prnt("", "nmap: no mapping found.")
-    elif not " " in args:
+    elif " " not in args:
         weechat.prnt("", "nmap syntax -> :nmap {lhs} {rhs}")
     else:
         key, mapping = args.split(" ", 1)
@@ -1087,7 +1087,7 @@ def cb_key_combo_default(data, signal, signal_data):
     Esc is handled a bit differently to avoid delays, see `cb_key_pressed()`.
     """
     global esc_pressed, vi_buffer, cmd_compl_text, cmd_text_orig, \
-           cmd_compl_pos, cmd_history_index
+        cmd_compl_pos, cmd_history_index
 
     # If Esc was pressed, strip the Esc part from the pressed keys.
     # Example: user presses Esc followed by i. This is detected as "\x01[i",
@@ -1126,13 +1126,13 @@ def cb_key_combo_default(data, signal, signal_data):
         if not imap_esc:
             return weechat.WEECHAT_RC_OK
         if (imap_esc.startswith(vi_buffer) and
-                imap_esc[len(vi_buffer):len(vi_buffer)+1] == keys):
+                imap_esc[len(vi_buffer):len(vi_buffer) + 1] == keys):
             vi_buffer += keys
             weechat.bar_item_update("vi_buffer")
             weechat.hook_timer(int(vimode_settings['imap_esc_timeout']), 0, 1,
                                "cb_check_imap_esc", vi_buffer)
         elif (vi_buffer and imap_esc.startswith(vi_buffer) and
-              imap_esc[len(vi_buffer):len(vi_buffer)+1] != keys):
+              imap_esc[len(vi_buffer):len(vi_buffer) + 1] != keys):
             vi_buffer = ""
             weechat.bar_item_update("vi_buffer")
         # imap_esc sequence detected -- remove the sequence keys from the
@@ -1141,10 +1141,10 @@ def cb_key_combo_default(data, signal, signal_data):
             buf = weechat.current_buffer()
             input_line = weechat.buffer_get_string(buf, "input")
             cur = weechat.buffer_get_integer(buf, "input_pos")
-            input_line = (input_line[:cur-len(imap_esc)+1] +
+            input_line = (input_line[:cur - len(imap_esc) + 1] +
                           input_line[cur:])
             weechat.buffer_set(buf, "input", input_line)
-            set_cur(buf, input_line, cur-len(imap_esc)+1, False)
+            set_cur(buf, input_line, cur - len(imap_esc) + 1, False)
             set_mode("NORMAL")
             vi_buffer = ""
             weechat.bar_item_update("vi_buffer")
