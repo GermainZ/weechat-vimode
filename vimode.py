@@ -1298,12 +1298,6 @@ def cb_key_combo_default(data, signal, signal_data):
             add_undo_history(buf, input_line)
         if isinstance(VI_KEYS[vi_keys], str):
             for _ in range(max(count, 1)):
-                # This is to avoid crashing WeeChat on script reloads/unloads,
-                # because no hooks must still be running when a script is
-                # reloaded or unloaded.
-                if (VI_KEYS[vi_keys] == "/input return" and
-                        input_line.startswith("/script ")):
-                    return weechat.WEECHAT_RC_OK
                 weechat.command("", VI_KEYS[vi_keys])
                 current_cur = weechat.buffer_get_integer(buf, "input_pos")
                 set_cur(buf, input_line, current_cur)
@@ -1532,7 +1526,9 @@ def cb_exec_cmd(data, remaining_calls):
                                                    tmp_args))
                     return weechat.WEECHAT_RC_OK
             # No vi commands found, run the command as WeeChat command
-            weechat.command("", "/{} {}".format(cmd, args))
+            # We /wait to avoid crashing WeeChat on script reloads/unloads
+            # (see <https://github.com/weechat/weechat/issues/1246>)
+            weechat.command("", "/wait 1ms /{} {}".format(cmd, args))
     return weechat.WEECHAT_RC_OK
 
 def cb_vimode_go_to_normal(data, buf, args):
