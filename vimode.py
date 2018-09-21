@@ -1053,9 +1053,11 @@ class UserMapping:
     def __init__(self, cmd):
         self.cmd = cmd
         self.count = 0
+        self.bad_sequence = ""
 
     def __call__(self, buf, input_line, cur, count):
         for _ in range(max(count, 1)):
+            bad_sequence_list = []
             for action in self.get_cmd_actions(self.cmd, first_call=True):
                 debug_print('action', action)
                 debug_print('buf', buf)
@@ -1063,12 +1065,26 @@ class UserMapping:
                 debug_print('cur', cur)
                 debug_print('count', count)
 
+                if self.bad_sequence:
+                    bad_sequence_list.append(self.bad_sequence)
+
                 action(buf, input_line, cur, self.count)
 
                 self.count = 0
+                self.bad_sequence = ""
+
                 buf = weechat.current_buffer()
                 input_line = weechat.buffer_get_string(buf, "input")
                 cur = weechat.buffer_get_integer(buf, "input_pos")
+
+            if self.bad_sequence:
+                bad_sequence_list.append(self.bad_sequence)
+                self.bad_sequence = ""
+
+            for bad_seq in bad_sequence_list:
+                error_msg = 'Failed to parse "{}" sequence ' \
+                            'in nmap binding.'.format(bad_seq)
+                print_warning(error_msg)
 
     def get_cmd_actions(self, cmd, *, first_call=False):
         """Generator for Callable Actions
@@ -1155,8 +1171,15 @@ class UserMapping:
             end = match.end()
             yield functools.partial(do_command, '/{}'.format(cmd[1:end - 4]))
             yield from self.get_cmd_actions(cmd[end:])
-        else:
-            yield from self.get_cmd_actions(cmd[1:])
+            return
+
+        if cmd[0] in (':', '/'):
+            debug_print('/command [options]', cmd)
+            self.bad_sequence += cmd
+            return
+
+        self.bad_sequence += cmd[0]
+        yield from self.get_cmd_actions(cmd[1:])
 
     def insert_input_action(self, new_input):
         """Factory for Action that Sends Input to Command-Line"""
