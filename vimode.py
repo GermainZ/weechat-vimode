@@ -1085,11 +1085,13 @@ class UserMapping:
             yield from self.get_cmd_actions(cmd[end:], first_call=first_call)
             return
 
+        lcmd = cmd.lower()
+
         command_pttrn = '[:/].*?<cr>'
         old_style_cmd_conditions = [
             first_call,
             cmd[0] == '/',
-            re.match(command_pttrn, cmd) is None,
+            re.match(command_pttrn, lcmd) is None,
         ]
 
         if all(old_style_cmd_conditions):
@@ -1098,7 +1100,6 @@ class UserMapping:
 
         debug_print('cmd', cmd)
 
-        lcmd = cmd.lower()
         if lcmd.startswith('<cr>'):
             yield self.command_to_action('/input return')
             yield from self.get_cmd_actions(cmd[4:])
