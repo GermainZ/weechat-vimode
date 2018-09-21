@@ -1051,7 +1051,7 @@ class UserMapping:
     """
     def __init__(self, cmd):
         self.cmd = cmd
-        self.count = 1
+        self.count = 0
 
     def __call__(self, buf, input_line, cur, count):
         for _ in range(max(count, 1)):
@@ -1064,7 +1064,7 @@ class UserMapping:
 
                 action(buf, input_line, cur, self.count)
 
-                self.count = 1
+                self.count = 0
                 buf = weechat.current_buffer()
                 input_line = weechat.buffer_get_string(buf, "input")
                 cur = weechat.buffer_get_integer(buf, "input_pos")
@@ -1078,9 +1078,11 @@ class UserMapping:
         if cmd == '':
             return
 
-        if re.match('^[1-9]', cmd):
-            self.count += int(cmd[0])
-            yield from self.get_cmd_actions(cmd[1:])
+        match = re.match('^[1-9][0-9]*', cmd)
+        if match:
+            end = match.end()
+            self.count += int(cmd[:end])
+            yield from self.get_cmd_actions(cmd[end:], first_call=first_call)
             return
 
         command_pttrn = '[:/].*<cr>'
