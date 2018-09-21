@@ -1082,7 +1082,7 @@ class UserMapping:
         if match:
             end = match.end()
             self.count += int(cmd[:end])
-            yield from self.get_cmd_actions(cmd[end:], first_call=first_call)
+            yield from self.get_cmd_actions(cmd[end:])
             return
 
         lcmd = cmd.lower()
