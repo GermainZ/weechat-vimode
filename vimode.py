@@ -22,6 +22,7 @@
 
 
 import csv
+import functools
 import json
 import os
 import re
@@ -30,8 +31,8 @@ try:
     from StringIO import StringIO
 except ImportError:
     from io import StringIO
-import time
 import sys
+import time
 
 import weechat
 
@@ -1095,13 +1096,13 @@ class UserMapping:
         ]
 
         if all(old_style_cmd_conditions):
-            yield self.command_to_action(cmd)
+            yield functools.partial(do_command, cmd)
             return
 
         debug_print('cmd', cmd)
 
         if lcmd.startswith('<cr>'):
-            yield self.command_to_action('/input return')
+            yield functools.partial(do_command, '/input return')
             yield from self.get_cmd_actions(cmd[4:])
             return
 
@@ -1129,7 +1130,7 @@ class UserMapping:
                 debug_print('command', command)
 
                 if isinstance(command, str):
-                    yield self.command_to_action(command)
+                    yield functools.partial(do_command, command)
                 else:
                     yield command
                 debug_print('cmd[len(keys)', cmd[len(keys):])
@@ -1138,52 +1139,24 @@ class UserMapping:
 
         for motion in VI_MOTIONS:
             if cmd.startswith(motion):
-                yield self.motion_to_action(motion)
+                yield functools.partial(do_motion, motion)
                 yield from self.get_cmd_actions(cmd[len(motion):])
                 return
 
         if len(cmd) > 1 and cmd[0] in VI_OPERATORS:
             for motion in VI_MOTIONS:
                 if cmd[1:].startswith(motion):
-                    yield self.operator_to_action(cmd[:len(motion) + 1])
+                    yield functools.partial(do_operator, cmd[:len(motion) + 1])
                     yield from self.get_cmd_actions(cmd[len(motion) + 1:])
                     return
 
         match = re.match(command_pttrn, lcmd)
         if match:
             end = match.end()
-            yield self.command_to_action('/{}'.format(cmd[1:end - 4]))
+            yield functools.partial(do_command, '/{}'.format(cmd[1:end - 4]))
             yield from self.get_cmd_actions(cmd[end:])
         else:
             yield from self.get_cmd_actions(cmd[1:])
-
-    def command_to_action(self, cmd):
-        """Action Factory
-
-        Converts commands in the form of `/command [options]` into callable
-        action objects.
-        """
-        def action(*args):
-            do_command(cmd, *args)
-        return action
-
-    def motion_to_action(self, motion):
-        """Action Factory
-
-        Converts vim motions into callable action objects.
-        """
-        def action(*args):
-            do_motion(motion, *args)
-        return action
-
-    def operator_to_action(self, operator_cmd):
-        """Action Factory
-
-        Converts vim operator motions into callable objects.
-        """
-        def action(*args):
-            do_operator(operator_cmd, *args)
-        return action
 
     def insert_input_action(self, new_input):
         """Factory for Action that Sends Input to Command-Line"""
