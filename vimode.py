@@ -1050,7 +1050,8 @@ class UserMapping:
 
     Enables multiple actions to be defined by a single mapping.
     """
-    def __init__(self, cmd):
+    def __init__(self, keys, cmd):
+        self.keys = keys
         self.cmd = cmd
         self.count = 0
         self.bad_sequence = ""
@@ -1083,7 +1084,8 @@ class UserMapping:
 
             for bad_seq in bad_sequence_list:
                 error_msg = 'Failed to parse "{}" sequence ' \
-                            'in nmap binding.'.format(bad_seq)
+                    'in the following user mapping: ' \
+                    '({}, {}).'.format(bad_seq, self.keys, self.cmd)
                 print_warning(error_msg)
 
     def get_cmd_actions(self, cmd, *, first_call=False):
@@ -1592,7 +1594,7 @@ def load_user_mappings():
         mappings.update(json.loads(vimode_settings['user_mappings']))
     vimode_settings['user_mappings'] = mappings
     for k, v in mappings.items():
-        VI_KEYS[k] = UserMapping(v)
+        VI_KEYS[k] = UserMapping(k, v)
 
 
 # Command-line execution.
