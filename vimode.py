@@ -1085,7 +1085,7 @@ class UserMapping:
             yield from self.get_cmd_actions(cmd[end:], first_call=first_call)
             return
 
-        command_pttrn = '[:/].*<cr>'
+        command_pttrn = '[:/].*?<cr>'
         old_style_cmd_conditions = [
             first_call,
             cmd[0] == '/',
