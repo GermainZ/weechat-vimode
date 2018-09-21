@@ -190,7 +190,7 @@ def cmd_nmap(args):
     See Also:
         `cmd_unmap()`.
     """
-    args = args.strip()
+    args = args.lstrip()
     if not args:
         mappings = vimode_settings['user_mappings']
         if mappings:
@@ -1044,6 +1044,133 @@ VI_KEYS = {'j': "/window scroll_down",
 for i in range(10, 99):
     VI_KEYS['\x01[j%s' % i] = "/buffer %s" % i
 
+class UserMap:
+    """Wraps User Mapping
+
+    Enables multiple actions to be defined by a single mapping.
+    """
+    def __init__(self, cmd):
+        self.cmd = cmd
+
+    def __call__(self, buf, input_line, cur, count):
+        for action in self.get_cmd_actions(self.cmd, first_call=True):
+            debug_print('action', action)
+            debug_print('buf', buf)
+            debug_print('input_line', input_line)
+            debug_print('cur', cur)
+            debug_print('count', count)
+
+            action(buf, input_line, cur, count)
+
+            buf = weechat.current_buffer()
+            input_line = weechat.buffer_get_string(buf, "input")
+            cur = weechat.buffer_get_integer(buf, "input_pos")
+
+    @classmethod
+    def get_cmd_actions(cls, cmd, *, first_call=False):
+        """Returns List of Callable Actions"""
+        if cmd == '':
+            return
+
+        command_pttrn = '[:/].*<cr>'
+        old_style_cmd_conditions = [
+            first_call,
+            cmd[0] == '/',
+            re.match(command_pttrn, cmd) is None,
+        ]
+
+        if all(old_style_cmd_conditions):
+            yield cls.command_to_action(cmd)
+            return
+
+        debug_print('cmd', cmd)
+
+        lcmd = cmd.lower()
+        if lcmd.startswith('<cr>'):
+            yield cls.command_to_action('/input return')
+            yield from cls.get_cmd_actions(cmd[4:])
+            return
+
+        global mode
+        if mode == 'INSERT':
+            match = re.search('<(esc|cr)>', lcmd)
+            end = match.start() if match else len(cmd)
+
+            yield cls.insert_input_action(cmd[:end])
+
+            if match:
+                group = match.group()
+                if group == '<esc>':
+                    start = match.end()
+                elif group == '<cr>':
+                    start = match.start()
+
+                set_mode('NORMAL')
+                yield from cls.get_cmd_actions(cmd[start:])
+
+            return
+
+        for keys, command in VI_KEYS.items():
+            if cmd.startswith(keys):
+                debug_print('keys', keys)
+                debug_print('command', command)
+
+                if isinstance(command, str):
+                    yield cls.command_to_action(command)
+                else:
+                    yield command
+                debug_print('cmd[len(keys)', cmd[len(keys):])
+                yield from cls.get_cmd_actions(cmd[len(keys):])
+                return
+
+        for motion in VI_MOTIONS:
+            if cmd.startswith(motion):
+                yield cls.motion_to_action(motion)
+                yield from cls.get_cmd_actions(cmd[len(motion):])
+                return
+
+        match = re.match(command_pttrn, lcmd)
+        if match:
+            end = match.end()
+            yield cls.command_to_action('/{}'.format(cmd[1:end - 4]))
+            yield from cls.get_cmd_actions(cmd[match.end():])
+        else:
+            yield from cls.get_cmd_actions(cmd[1:])
+
+    @classmethod
+    def command_to_action(cls, cmd):
+        """Action Factory
+
+        Converts commands in the form of `/command [options]` into callable
+        action objects.
+        """
+        def action(*args):
+            do_command(cmd, *args)
+        return action
+
+    @classmethod
+    def motion_to_action(cls, motion):
+        """Action Factory
+
+        Converts vim motions into callable action objects.
+        """
+        def action(*args):
+            do_motion(motion, *args)
+        return action
+
+    @classmethod
+    def insert_input_action(cls, new_input):
+        """Factory for Action that Sends Input to Command-Line"""
+        def action(buf, input_line, cur, count):
+            p = int(cur)
+            final_input = '{}{}{}'.format(input_line[:p],
+                                          new_input,
+                                          input_line[p:])
+            weechat.buffer_set(buf, "input", final_input)
+            new_pos = str(len(new_input) + p)
+            weechat.buffer_set(buf, "input_pos", new_pos)
+        return action
+
 
 # Key handling.
 # =============
@@ -1298,21 +1425,13 @@ def cb_key_combo_default(data, signal, signal_data):
         if vi_keys not in ['u', '\x01R']:
             add_undo_history(buf, input_line)
         if isinstance(VI_KEYS[vi_keys], str):
-            for _ in range(max(count, 1)):
-                weechat.command("", VI_KEYS[vi_keys])
-                current_cur = weechat.buffer_get_integer(buf, "input_pos")
-                set_cur(buf, input_line, current_cur)
+            do_command(VI_KEYS[vi_keys], buf, input_line, cur, count)
         else:
             VI_KEYS[vi_keys](buf, input_line, cur, count)
     # It's a motion (e.g. "w") — call `motion_X()` where X is the motion, then
     # set the cursor's position to what that function returned.
     elif vi_keys in VI_MOTIONS:
-        if vi_keys in SPECIAL_CHARS:
-            func = "motion_%s" % SPECIAL_CHARS[vi_keys]
-        else:
-            func = "motion_%s" % vi_keys
-        end, _, _ = globals()[func](input_line, cur, count)
-        set_cur(buf, input_line, end)
+        do_motion(vi_keys, buf, input_line, cur, count)
     # It's an operator + motion (e.g. "dw") — call `motion_X()` (where X is
     # the motion), then we call `operator_Y()` (where Y is the operator)
     # with the position `motion_X()` returned. `operator_Y()` should then
@@ -1462,6 +1581,8 @@ def load_user_mappings():
     if vimode_settings['user_mappings']:
         mappings.update(json.loads(vimode_settings['user_mappings']))
     vimode_settings['user_mappings'] = mappings
+    for k, v in mappings.items():
+        VI_KEYS[k] = UserMap(v)
 
 
 # Command-line execution.
@@ -1582,6 +1703,21 @@ def cb_vimode_cmd(data, buf, args):
 
 # Motions/keys helpers.
 # ---------------------
+def do_command(cmd, buf, input_line, cur, count):
+    """Execute WeeChat Command"""
+    for _ in range(max(count, 1)):
+        weechat.command("", cmd)
+        current_cur = weechat.buffer_get_integer(buf, "input_pos")
+        set_cur(buf, input_line, current_cur)
+
+def do_motion(keys, buf, input_line, cur, count):
+    """Perform Vim-like Motion"""
+    if keys in SPECIAL_CHARS:
+        func = "motion_%s" % SPECIAL_CHARS[keys]
+    else:
+        func = "motion_%s" % keys
+    end, _, _ = globals()[func](input_line, cur, count)
+    set_cur(buf, input_line, end)
 
 def get_pos(data, regex, cur, ignore_cur=False, count=0):
     """Return the position of `regex` match in `data`, starting at `cur`.
@@ -1679,6 +1815,7 @@ def get_keys_and_count(combo):
             we should handle. User mappings are also expanded.
         count (int): count for `combo`.
     """
+
     # Look for a potential match (e.g. "d" might become "dw" or "dd" so we
     # accept it, but "d9" is invalid).
     matched = False
@@ -1695,9 +1832,6 @@ def get_keys_and_count(combo):
                 break
         combo = combo.replace(count, "", 1)
         count = int(count)
-    # It's a user defined key. Expand it.
-    if combo in vimode_settings['user_mappings']:
-        combo = vimode_settings['user_mappings'][combo]
     # It's a WeeChat command.
     if not matched and combo.startswith("/"):
         matched = True
@@ -1746,6 +1880,14 @@ def get_keys_and_count(combo):
 
 # Other helpers.
 # --------------
+def debug_print(name, value):
+    """Prints the Name and Value of a Variable
+
+    Toggle the DEBUGGING_ENABLED to enable/disable debug output.
+    """
+    DEBUGGING_ENABLED = False
+    if DEBUGGING_ENABLED:
+        print('[DEBUG] {} = {}'.format(name, value))
 
 def set_mode(arg):
     """Set the current mode and update the bar mode indicator."""
