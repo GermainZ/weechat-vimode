@@ -1054,19 +1054,20 @@ class UserMap:
         self.count = 1
 
     def __call__(self, buf, input_line, cur, count):
-        for action in self.get_cmd_actions(self.cmd, first_call=True):
-            debug_print('action', action)
-            debug_print('buf', buf)
-            debug_print('input_line', input_line)
-            debug_print('cur', cur)
-            debug_print('count', count)
+        for _ in range(max(count, 1)):
+            for action in self.get_cmd_actions(self.cmd, first_call=True):
+                debug_print('action', action)
+                debug_print('buf', buf)
+                debug_print('input_line', input_line)
+                debug_print('cur', cur)
+                debug_print('count', count)
 
-            action(buf, input_line, cur, self.count)
+                action(buf, input_line, cur, self.count)
 
-            self.count = 1
-            buf = weechat.current_buffer()
-            input_line = weechat.buffer_get_string(buf, "input")
-            cur = weechat.buffer_get_integer(buf, "input_pos")
+                self.count = 1
+                buf = weechat.current_buffer()
+                input_line = weechat.buffer_get_string(buf, "input")
+                cur = weechat.buffer_get_integer(buf, "input_pos")
 
     def get_cmd_actions(self, cmd, *, first_call=False):
         """Returns List of Callable Actions"""
