@@ -1051,6 +1051,7 @@ class UserMap:
     """
     def __init__(self, cmd):
         self.cmd = cmd
+        self.count = 1
 
     def __call__(self, buf, input_line, cur, count):
         for action in self.get_cmd_actions(self.cmd, first_call=True):
@@ -1060,14 +1061,14 @@ class UserMap:
             debug_print('cur', cur)
             debug_print('count', count)
 
-            action(buf, input_line, cur, count)
+            action(buf, input_line, cur, self.count)
 
+            self.count = 1
             buf = weechat.current_buffer()
             input_line = weechat.buffer_get_string(buf, "input")
             cur = weechat.buffer_get_integer(buf, "input_pos")
 
-    @classmethod
-    def get_cmd_actions(cls, cmd, *, first_call=False):
+    def get_cmd_actions(self, cmd, *, first_call=False):
         """Returns List of Callable Actions"""
         if cmd == '':
             return
@@ -1079,16 +1080,21 @@ class UserMap:
             re.match(command_pttrn, cmd) is None,
         ]
 
+        if re.match('^[1-9]', cmd):
+            self.count += int(cmd[0])
+            yield from self.get_cmd_actions(cmd[1:])
+            return
+
         if all(old_style_cmd_conditions):
-            yield cls.command_to_action(cmd)
+            yield self.command_to_action(cmd)
             return
 
         debug_print('cmd', cmd)
 
         lcmd = cmd.lower()
         if lcmd.startswith('<cr>'):
-            yield cls.command_to_action('/input return')
-            yield from cls.get_cmd_actions(cmd[4:])
+            yield self.command_to_action('/input return')
+            yield from self.get_cmd_actions(cmd[4:])
             return
 
         global mode
@@ -1096,7 +1102,7 @@ class UserMap:
             match = re.search('<(esc|cr)>', lcmd)
             end = match.start() if match else len(cmd)
 
-            yield cls.insert_input_action(cmd[:end])
+            yield self.insert_input_action(cmd[:end])
 
             if match:
                 group = match.group()
@@ -1106,7 +1112,7 @@ class UserMap:
                     start = match.start()
 
                 set_mode('NORMAL')
-                yield from cls.get_cmd_actions(cmd[start:])
+                yield from self.get_cmd_actions(cmd[start:])
 
             return
 
@@ -1116,29 +1122,28 @@ class UserMap:
                 debug_print('command', command)
 
                 if isinstance(command, str):
-                    yield cls.command_to_action(command)
+                    yield self.command_to_action(command)
                 else:
                     yield command
                 debug_print('cmd[len(keys)', cmd[len(keys):])
-                yield from cls.get_cmd_actions(cmd[len(keys):])
+                yield from self.get_cmd_actions(cmd[len(keys):])
                 return
 
         for motion in VI_MOTIONS:
             if cmd.startswith(motion):
-                yield cls.motion_to_action(motion)
-                yield from cls.get_cmd_actions(cmd[len(motion):])
+                yield self.motion_to_action(motion)
+                yield from self.get_cmd_actions(cmd[len(motion):])
                 return
 
         match = re.match(command_pttrn, lcmd)
         if match:
             end = match.end()
-            yield cls.command_to_action('/{}'.format(cmd[1:end - 4]))
-            yield from cls.get_cmd_actions(cmd[match.end():])
+            yield self.command_to_action('/{}'.format(cmd[1:end - 4]))
+            yield from self.get_cmd_actions(cmd[match.end():])
         else:
-            yield from cls.get_cmd_actions(cmd[1:])
+            yield from self.get_cmd_actions(cmd[1:])
 
-    @classmethod
-    def command_to_action(cls, cmd):
+    def command_to_action(self, cmd):
         """Action Factory
 
         Converts commands in the form of `/command [options]` into callable
@@ -1148,8 +1153,7 @@ class UserMap:
             do_command(cmd, *args)
         return action
 
-    @classmethod
-    def motion_to_action(cls, motion):
+    def motion_to_action(self, motion):
         """Action Factory
 
         Converts vim motions into callable action objects.
@@ -1158,8 +1162,7 @@ class UserMap:
             do_motion(motion, *args)
         return action
 
-    @classmethod
-    def insert_input_action(cls, new_input):
+    def insert_input_action(self, new_input):
         """Factory for Action that Sends Input to Command-Line"""
         def action(buf, input_line, cur, count):
             p = int(cur)
