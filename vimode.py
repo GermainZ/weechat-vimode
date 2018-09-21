@@ -1044,7 +1044,7 @@ VI_KEYS = {'j': "/window scroll_down",
 for i in range(10, 99):
     VI_KEYS['\x01[j%s' % i] = "/buffer %s" % i
 
-class UserMap:
+class UserMapping:
     """Wraps User Mapping
 
     Enables multiple actions to be defined by a single mapping.
@@ -1070,8 +1070,17 @@ class UserMap:
                 cur = weechat.buffer_get_integer(buf, "input_pos")
 
     def get_cmd_actions(self, cmd, *, first_call=False):
-        """Returns List of Callable Actions"""
+        """Generator for Callable Actions
+
+        Yields:
+            Callable object: func(buf, input_line, cur, count)
+        """
         if cmd == '':
+            return
+
+        if re.match('^[1-9]', cmd):
+            self.count += int(cmd[0])
+            yield from self.get_cmd_actions(cmd[1:])
             return
 
         command_pttrn = '[:/].*<cr>'
@@ -1080,11 +1089,6 @@ class UserMap:
             cmd[0] == '/',
             re.match(command_pttrn, cmd) is None,
         ]
-
-        if re.match('^[1-9]', cmd):
-            self.count += int(cmd[0])
-            yield from self.get_cmd_actions(cmd[1:])
-            return
 
         if all(old_style_cmd_conditions):
             yield self.command_to_action(cmd)
@@ -1098,7 +1102,6 @@ class UserMap:
             yield from self.get_cmd_actions(cmd[4:])
             return
 
-        global mode
         if mode == 'INSERT':
             match = re.search('<(esc|cr)>', lcmd)
             end = match.start() if match else len(cmd)
@@ -1136,11 +1139,18 @@ class UserMap:
                 yield from self.get_cmd_actions(cmd[len(motion):])
                 return
 
+        if len(cmd) > 1 and cmd[0] in VI_OPERATORS:
+            for motion in VI_MOTIONS:
+                if cmd[1:].startswith(motion):
+                    yield self.operator_to_action(cmd[:len(motion) + 1])
+                    yield from self.get_cmd_actions(cmd[len(motion) + 1:])
+                    return
+
         match = re.match(command_pttrn, lcmd)
         if match:
             end = match.end()
             yield self.command_to_action('/{}'.format(cmd[1:end - 4]))
-            yield from self.get_cmd_actions(cmd[match.end():])
+            yield from self.get_cmd_actions(cmd[end:])
         else:
             yield from self.get_cmd_actions(cmd[1:])
 
@@ -1161,6 +1171,15 @@ class UserMap:
         """
         def action(*args):
             do_motion(motion, *args)
+        return action
+
+    def operator_to_action(self, operator_cmd):
+        """Action Factory
+
+        Converts vim operator motions into callable objects.
+        """
+        def action(*args):
+            do_operator(operator_cmd, *args)
         return action
 
     def insert_input_action(self, new_input):
@@ -1443,19 +1462,7 @@ def cb_key_combo_default(data, signal, signal_data):
     elif (len(vi_keys) > 1 and
           vi_keys[0] in VI_OPERATORS and
           vi_keys[1:] in VI_MOTIONS):
-        add_undo_history(buf, input_line)
-        if vi_keys[1:] in SPECIAL_CHARS:
-            func = "motion_%s" % SPECIAL_CHARS[vi_keys[1:]]
-        else:
-            func = "motion_%s" % vi_keys[1:]
-        pos, overwrite, catching = globals()[func](input_line, cur, count)
-        # If it's a catching motion, we don't want to call the operator just
-        # yet -- this code will run again when the motion is complete, at which
-        # point we will.
-        if not catching:
-            oper = "operator_%s" % vi_keys[0]
-            globals()[oper](buf, input_line, cur, pos, overwrite)
-    # The combo isn't completed yet (e.g. just "d").
+        do_operator(vi_keys, buf, input_line, cur, count)
     else:
         return weechat.WEECHAT_RC_OK_EAT
 
@@ -1586,7 +1593,7 @@ def load_user_mappings():
         mappings.update(json.loads(vimode_settings['user_mappings']))
     vimode_settings['user_mappings'] = mappings
     for k, v in mappings.items():
-        VI_KEYS[k] = UserMap(v)
+        VI_KEYS[k] = UserMapping(v)
 
 
 # Command-line execution.
@@ -1722,6 +1729,20 @@ def do_motion(keys, buf, input_line, cur, count):
         func = "motion_%s" % keys
     end, _, _ = globals()[func](input_line, cur, count)
     set_cur(buf, input_line, end)
+
+def do_operator(keys, buf, input_line, cur, count):
+    add_undo_history(buf, input_line)
+    if keys[1:] in SPECIAL_CHARS:
+        func = "motion_%s" % SPECIAL_CHARS[keys[1:]]
+    else:
+        func = "motion_%s" % keys[1:]
+    pos, overwrite, catching = globals()[func](input_line, cur, count)
+    # If it's a catching motion, we don't want to call the operator just
+    # yet -- this code will run again when the motion is complete, at which
+    # point we will.
+    if not catching:
+        oper = "operator_%s" % keys[0]
+        globals()[oper](buf, input_line, cur, pos, overwrite)
 
 def get_pos(data, regex, cur, ignore_cur=False, count=0):
     """Return the position of `regex` match in `data`, starting at `cur`.
