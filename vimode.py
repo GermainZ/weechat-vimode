@@ -1046,20 +1046,17 @@ for i in range(10, 99):
     VI_KEYS['\x01[j%s' % i] = "/buffer %s" % i
 
 class UserMapping:
-    """Wraps User Mapping
-
-    Enables multiple actions to be defined by a single mapping.
-    """
-    def __init__(self, keys, cmd):
+    """Wraps User Mapping Defined by :nmap Command"""
+    def __init__(self, keys, full_cmd):
         self.keys = keys
-        self.cmd = cmd
+        self.full_cmd = full_cmd
         self.count = 0
         self.bad_sequence = ""
 
     def __call__(self, buf, input_line, cur, count):
         for _ in range(max(count, 1)):
             bad_sequence_list = []
-            for action in self.get_cmd_actions(self.cmd, first_call=True):
+            for action in self.get_cmd_actions(self.full_cmd, first_call=True):
                 debug_print('action', action)
                 debug_print('buf', buf)
                 debug_print('input_line', input_line)
@@ -1085,7 +1082,7 @@ class UserMapping:
             for bad_seq in bad_sequence_list:
                 error_msg = 'Failed to parse "{}" sequence ' \
                     'in the following user mapping: ' \
-                    '({}, {}).'.format(bad_seq, self.keys, self.cmd)
+                    '({}, {}).'.format(bad_seq, self.keys, self.full_cmd)
                 print_warning(error_msg)
 
     def get_cmd_actions(self, cmd, *, first_call=False):
