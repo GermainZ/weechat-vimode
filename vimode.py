@@ -1054,9 +1054,16 @@ class UserMapping:
         self.bad_sequence = ""
 
     def __call__(self, buf, input_line, cur, count):
-        for _ in range(max(count, 1)):
+        if '#N' in self.full_cmd:
+            full_cmd = self.full_cmd.replace('#N', str(count))
+            count = 1
+        else:
+            full_cmd = self.full_cmd
+            count = max(count, 1)
+
+        for _ in range(count):
             bad_sequence_list = []
-            for action in self.get_cmd_actions(self.full_cmd, first_call=True):
+            for action in self.get_cmd_actions(full_cmd, first_call=True):
                 debug_print('action', action)
                 debug_print('buf', buf)
                 debug_print('input_line', input_line)
@@ -1838,7 +1845,6 @@ def get_keys_and_count(combo):
             we should handle. User mappings are also expanded.
         count (int): count for `combo`.
     """
-
     # Look for a potential match (e.g. "d" might become "dw" or "dd" so we
     # accept it, but "d9" is invalid).
     matched = False
