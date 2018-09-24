@@ -237,25 +237,25 @@ count. This will all probably be easier to grasp after seeing a few examples:
 
 1) Commands can be bound together easily:
      - INPUT: `:nmap h /cmd1<CR>/cmd2<CR>`
-     - OUTPUT **[h]**: Runs `/cmd1` then `/cmd2`.
+     - OUTPUT [h]: Runs `/cmd1` then `/cmd2`.
 
 2) User defined bindings can be followed:
      - INPUT: `:nmap j /buffer 5<CR>h`
-     - OUTPUT **[j]**: Go to the fifth buffer, then run `/cmd1`, and then run `/cmd2`.
+     - OUTPUT [j]: Go to the fifth buffer, then run `/cmd1`, and then run `/cmd2`.
 
 3) Bindings can take advantage of INSERT mode:
      - INPUT: `:nmap k i MESSAGE<Esc>0i`
-     - OUTPUT **[k]**: Prints ' MESSAGE' to command-line and then returns the user to the beginning of the line. The user is left in INSERT mode.
+     - OUTPUT [k]: Prints ' MESSAGE' to command-line and then returns the user to the beginning of the line. The user is left in INSERT mode.
 
 4) Counts are respected both internally and externally:
      - INPUT: `:nmap j 3J`
-     - OUTPUT **[j]**: Go three buffers down.
-     - OUTPUT **[3j]**: Go nine buffers down.
+     - OUTPUT [j]: Go three buffers down.
+     - OUTPUT [3j]: Go nine buffers down.
 
 5) Special "count tag" gives you more flexibility:
      - INPUT: `:nmap @ /buffer #{3}<CR>`
-     - OUTPUT **[7@]**: Go to the seventh buffer.
-     - OUTPUT **[@]**: Go to the third buffer.
+     - OUTPUT [7@]: Go to the seventh buffer.
+     - OUTPUT [@]: Go to the third buffer.
 
 # History:
 * version 0.1:      initial release
