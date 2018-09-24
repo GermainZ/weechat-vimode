@@ -1054,8 +1054,11 @@ class UserMapping:
         self.bad_sequence = ""
 
     def __call__(self, buf, input_line, cur, count):
-        if '#N' in self.full_cmd:
-            full_cmd = self.full_cmd.replace('#N', str(count))
+        if re.search('#{\d+}', self.full_cmd) is not None:
+            if count:
+                full_cmd = re.sub('#{\d+}', str(count), self.full_cmd)
+            else:
+                full_cmd = re.sub('#{(\d+)}', r'\1', self.full_cmd)
             count = 1
         else:
             full_cmd = self.full_cmd
