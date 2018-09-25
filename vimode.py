@@ -197,6 +197,7 @@ def cmd_nmap(args):
         if mappings:
             title = "----- Vimode User Mappings -----"
             bar = '-' * len(title)
+
             weechat.prnt("", bar)
             weechat.prnt("", title)
             weechat.prnt("", bar)
@@ -207,7 +208,12 @@ def cmd_nmap(args):
                                     (r'\u0001\[([A-Z])', r'<M-\1>')]:
                     pretty_keys = re.sub(pttrn, repl, pretty_keys)
 
-                weechat.prnt("", '("{}", "{}")'.format(pretty_keys, mapping))
+                pretty_mapping = mapping
+                for pttrn, repl in [('"', '\\"')]:
+                    pretty_mapping = re.sub(pttrn, repl, pretty_mapping)
+
+                msg_fmt = '("{}", "{}")'
+                weechat.prnt("", msg_fmt.format(pretty_keys, pretty_mapping))
         else:
             weechat.prnt("", "nmap: no mapping found.")
     elif " " not in args:
