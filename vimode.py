@@ -1064,26 +1064,26 @@ for i in range(10, 99):
 
 class UserMapping:
     """Wraps User Mapping Defined by :nmap Command"""
-    def __init__(self, keys, full_cmd):
-        self.keys = keys
-        self.full_cmd = full_cmd
+    def __init__(self, lhs, rhs):
+        self.lhs = lhs
+        self.rhs = rhs
         self.count = 0
         self.bad_sequence = ""
 
     def __call__(self, buf, input_line, cur, count):
-        if re.search('#{\d+}', self.full_cmd) is not None:
+        if re.search('#{\d+}', self.rhs) is not None:
             if count:
-                full_cmd = re.sub('#{\d+}', str(count), self.full_cmd)
+                rhs = re.sub('#{\d+}', str(count), self.rhs)
             else:
-                full_cmd = re.sub('#{(\d+)}', r'\1', self.full_cmd)
+                rhs = re.sub('#{(\d+)}', r'\1', self.rhs)
             count = 1
         else:
-            full_cmd = self.full_cmd
+            rhs = self.rhs
             count = max(count, 1)
 
         for _ in range(count):
             bad_sequence_list = []
-            for action in self.get_cmd_actions(full_cmd, first_call=True):
+            for action in self.parse(rhs, first_call=True):
                 if self.bad_sequence:
                     bad_sequence_list.append(self.bad_sequence)
 
@@ -1103,48 +1103,48 @@ class UserMapping:
             for bad_seq in bad_sequence_list:
                 error_msg = 'Failed to parse "{}" sequence ' \
                     'in the following user mapping: ' \
-                    '({}, {}).'.format(bad_seq, self.keys, self.full_cmd)
+                    '({}, {}).'.format(bad_seq, self.lhs, self.rhs)
                 print_warning(error_msg)
 
-    def get_cmd_actions(self, cmd, *, first_call=False):
+    def parse(self, vi_keys, *, first_call=False):
         """Generator for Callable Actions
 
         Yields:
             Callable object: func(buf, input_line, cur, count)
         """
-        if cmd == '':
+        if vi_keys == '':
             return
 
-        match = re.match('^[1-9][0-9]*', cmd)
-        if match:
-            end = match.end()
-            self.count += int(cmd[:end])
-            yield from self.get_cmd_actions(cmd[end:])
-            return
-
-        lcmd = cmd.lower()
+        lower_vi_keys = vi_keys.lower()
 
         command_pttrn = '[:/].*?<cr>'
         old_style_cmd_conditions = [
             first_call,
-            cmd[0] == '/',
-            re.match(command_pttrn, lcmd) is None,
+            vi_keys[0] == '/',
+            re.match(command_pttrn, lower_vi_keys) is None,
         ]
 
         if all(old_style_cmd_conditions):
-            yield functools.partial(do_command, cmd)
+            yield functools.partial(do_command, vi_keys)
             return
 
-        if lcmd.startswith('<cr>'):
+        match = re.match('^[1-9][0-9]*', vi_keys)
+        if match:
+            end = match.end()
+            self.count += int(vi_keys[:end])
+            yield from self.parse(vi_keys[end:])
+            return
+
+        if lower_vi_keys.startswith('<cr>'):
             yield functools.partial(do_command, '/input return')
-            yield from self.get_cmd_actions(cmd[4:])
+            yield from self.parse(vi_keys[4:])
             return
 
         if mode == 'INSERT':
-            match = re.search('<(esc|cr)>', lcmd)
-            end = match.start() if match else len(cmd)
+            match = re.search('<(esc|cr)>', lower_vi_keys)
+            end = match.start() if match else len(vi_keys)
 
-            yield self.insert_input_action(cmd[:end])
+            yield self.insert_input_action(vi_keys[:end])
 
             if match:
                 group = match.group()
@@ -1154,45 +1154,47 @@ class UserMapping:
                     start = match.start()
 
                 set_mode('NORMAL')
-                yield from self.get_cmd_actions(cmd[start:])
+                yield from self.parse(vi_keys[start:])
 
             return
 
         for keys, command in VI_KEYS.items():
-            if cmd.startswith(keys):
+            if vi_keys.startswith(keys):
                 if isinstance(command, str):
                     yield functools.partial(do_command, command)
                 else:
                     yield command
-                yield from self.get_cmd_actions(cmd[len(keys):])
+                yield from self.parse(vi_keys[len(keys):])
                 return
 
         for motion in VI_MOTIONS:
-            if cmd.startswith(motion):
+            if vi_keys.startswith(motion):
                 yield functools.partial(do_motion, motion)
-                yield from self.get_cmd_actions(cmd[len(motion):])
+                yield from self.parse(vi_keys[len(motion):])
                 return
 
-        if len(cmd) > 1 and cmd[0] in VI_OPERATORS:
+        if len(vi_keys) > 1 and vi_keys[0] in VI_OPERATORS:
             for motion in VI_MOTIONS:
-                if cmd[1:].startswith(motion):
-                    yield functools.partial(do_operator, cmd[:len(motion) + 1])
-                    yield from self.get_cmd_actions(cmd[len(motion) + 1:])
+                if vi_keys[1:].startswith(motion):
+                    yield functools.partial(do_operator,
+                                            vi_keys[:len(motion) + 1])
+                    yield from self.parse(vi_keys[len(motion) + 1:])
                     return
 
-        match = re.match(command_pttrn, lcmd)
+        match = re.match(command_pttrn, lower_vi_keys)
         if match:
             end = match.end()
-            yield functools.partial(do_command, '/{}'.format(cmd[1:end - 4]))
-            yield from self.get_cmd_actions(cmd[end:])
+            yield functools.partial(do_command,
+                                    '/{}'.format(vi_keys[1:end - 4]))
+            yield from self.parse(vi_keys[end:])
             return
 
-        if cmd[0] in (':', '/'):
-            self.bad_sequence += cmd
+        if vi_keys[0] in (':', '/'):
+            self.bad_sequence += vi_keys
             return
 
-        self.bad_sequence += cmd[0]
-        yield from self.get_cmd_actions(cmd[1:])
+        self.bad_sequence += vi_keys[0]
+        yield from self.parse(vi_keys[1:])
 
     def insert_input_action(self, new_input):
         """Factory for Action that Sends Input to Command-Line"""
