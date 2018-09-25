@@ -1067,11 +1067,11 @@ class UserMapping:
     def __init__(self, lhs, rhs):
         self.lhs = lhs
         self.rhs = rhs
-        self.count = 0
-        self.bad_sequence = ""
 
     def __call__(self, buf, input_line, cur, count):
         rhs, count = self.process_count(count)
+        self.count = 0
+        self.bad_sequence = ""
         for _ in range(count):
             bad_seq_list = []
             for action in self.parse(rhs, first_call=True):
@@ -1080,7 +1080,11 @@ class UserMapping:
 
                 action(buf, input_line, cur, self.count)
 
-                self.count = 0
+                # Reset count unless last key triggers
+                # INSERT mode ('i', 'a', 'I', 'A', ...).
+                if mode != 'INSERT':
+                    self.count = 0
+
                 self.bad_sequence = ""
 
                 buf = weechat.current_buffer()
@@ -1094,7 +1098,7 @@ class UserMapping:
             self.report_errors(bad_seq_list)
 
     def process_count(self, count):
-        """Checks for a count tag of the form #{N} where N is some integer.
+        """Checks for a special count tag of the form #{N} where N is some integer.
 
         If a count tag is found, consume the count by substituting it in place
         of the tag.
@@ -1158,6 +1162,10 @@ class UserMapping:
             match = re.search('<(esc|cr)>', vi_keys.lower())
             end = match.start() if match else len(vi_keys)
 
+            # an INSERT action only works with a count if terminated with <Esc>
+            if not match or match.group() != '<esc>':
+                self.count = 0
+
             yield self.imode_sequence(vi_keys[:end])
 
             if match:
@@ -1218,13 +1226,17 @@ class UserMapping:
     def imode_sequence(self, new_input):
         """Factory for Action that Sends Input to Command-Line"""
         def action(buf, input_line, cur, count):
-            p = int(cur)
-            final_input = '{}{}{}'.format(input_line[:p],
-                                          new_input,
-                                          input_line[p:])
-            weechat.buffer_set(buf, "input", final_input)
-            new_pos = str(len(new_input) + p)
-            weechat.buffer_set(buf, "input_pos", new_pos)
+            for _ in range(max(int(count), 1)):
+                p = int(cur)
+                final_input = '{}{}{}'.format(input_line[:p],
+                                              new_input,
+                                              input_line[p:])
+                weechat.buffer_set(buf, "input", final_input)
+                new_pos = str(len(new_input) + p)
+                weechat.buffer_set(buf, "input_pos", new_pos)
+
+                input_line = weechat.buffer_get_string(buf, "input")
+                cur = weechat.buffer_get_integer(buf, "input_pos")
         return action
 
 
