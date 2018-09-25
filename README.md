@@ -252,7 +252,7 @@ count. This will all probably be easier to grasp after seeing a few examples:
      - OUTPUT [j]: Go three buffers down.
      - OUTPUT [3j]: Go nine buffers down.
 
-5) Special "count tag" gives you more flexibility when using counts:
+5) Special "count tag" gives you more flexibility when using external counts:
      - INPUT: `:nmap @ /buffer #{3}<CR>`
      - OUTPUT [7@]: Go to the seventh buffer.
      - OUTPUT [@]: Go to the third buffer.

@@ -195,9 +195,19 @@ def cmd_nmap(args):
     if not args:
         mappings = vimode_settings['user_mappings']
         if mappings:
-            weechat.prnt("", "User-defined key mappings:")
-            for key, mapping in mappings.items():
-                weechat.prnt("", "{} -> {}".format(key, mapping))
+            title = "----- Vimode User Mappings -----"
+            bar = '-' * len(title)
+            weechat.prnt("", bar)
+            weechat.prnt("", title)
+            weechat.prnt("", bar)
+            for keys, mapping in sorted(mappings.items(),
+                                        key=lambda x: x[0].lower()):
+                pretty_keys = keys
+                for pttrn, repl in [(r'\u0001([A-Z])', r'<C-\1>'),
+                                    (r'\u0001\[([A-Z])', r'<M-\1>')]:
+                    pretty_keys = re.sub(pttrn, repl, pretty_keys)
+
+                weechat.prnt("", '("{}", "{}")'.format(pretty_keys, mapping))
         else:
             weechat.prnt("", "nmap: no mapping found.")
     elif " " not in args:
