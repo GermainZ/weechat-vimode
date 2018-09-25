@@ -1071,7 +1071,6 @@ class UserMapping:
     def __call__(self, buf, input_line, cur, count):
         rhs, count = self.process_count(count)
         self.count = 0
-        self.index = 0
         self.bad_sequence = ""
         for _ in range(count):
             bad_seq_list = []
@@ -1145,17 +1144,18 @@ class UserMapping:
 
     def new_style(self, vi_keys):
         """Parse New-Style User Mapping"""
-        self.index = 0
-        while self.index < len(vi_keys):
-            match = re.match('^[1-9][0-9]*', vi_keys[self.index:])
+        index = 0
+        while index < len(vi_keys):
+            match = re.match('^[1-9][0-9]*', vi_keys[index:])
             if match:
                 # >>> COUNT
-                end = match.end() + self.index
-                self.count += int(vi_keys[self.index:end])
-                self.index += match.end()
+                end = match.end() + index
+                self.count += int(vi_keys[index:end])
+                index += match.end()
 
             # >>> ACTION SPECIFIER
-            action = self.action_spec(vi_keys[self.index:])
+            action, i = self.action_spec(vi_keys[index:])
+            index += i
             if action is None:
                 continue
             else:
@@ -1164,13 +1164,13 @@ class UserMapping:
     def action_spec(self, vi_keys):
         """Parse Action Specifier
 
-        Increments self.index by length of action specifier matched.
+        Returns:
+            2-tuple: (Callable_Action, Index_Where_Parsing_Stoped)
         """
         # >>> ENTER
         if vi_keys.lower().startswith('<cr>'):
-            self.index += 4
             set_mode('NORMAL')
-            return functools.partial(do_command, '/input return')
+            return functools.partial(do_command, '/input return'), 4
 
         # >>> INSERT MODE SEQUENCE
         if mode == 'INSERT':
@@ -1181,53 +1181,51 @@ class UserMapping:
                 index = match.start()
                 group = match.group()
                 if group == '<esc>':
-                    self.index += match.end()
+                    index = match.end()
                 else:
-                    self.index += match.start()
+                    index = match.start()
             else:
                 index = len(vi_keys)
-                self.index += index
 
-            return self.imode_sequence(vi_keys[:index])
+            start = match.start() if match else len(vi_keys)
+            return self.imode_sequence(vi_keys[:start]), index
 
         # >>> VI_KEY
         for keys, command in VI_KEYS.items():
             if vi_keys.startswith(keys):
-                self.index += len(keys)
                 if isinstance(command, str):
-                    return functools.partial(do_command, command)
+                    return functools.partial(do_command, command), len(keys)
                 else:
-                    return command
+                    return command, len(keys)
 
         # >>> VI_MOTION
         for motion in VI_MOTIONS:
             if vi_keys.startswith(motion):
-                self.index += len(motion)
-                return functools.partial(do_motion, motion)
+                return functools.partial(do_motion, motion), len(motion)
 
         # >>> VI_OPERATOR
         if len(vi_keys) > 1 and vi_keys[0] in VI_OPERATORS:
             for motion in VI_MOTIONS:
                 if vi_keys[1:].startswith(motion):
-                    self.index += len(motion) + 1
-                    return functools.partial(do_operator,
-                                             vi_keys[:len(motion) + 1])
+                    action = functools.partial(do_operator,
+                                               vi_keys[:len(motion) + 1])
+                    return action, len(motion) + 1
 
         # >>> COMMAND
         match = re.match('[:/].*?<cr>', vi_keys.lower())
         if match:
             end = match.end()
-            self.index += end
-            return functools.partial(do_command,
-                                     '/{}'.format(vi_keys[1:end - 4]))
+            action = functools.partial(do_command,
+                                       '/{}'.format(vi_keys[1:end - 4]))
+            return action, end
 
         # >>> PARSING ERROR
         if vi_keys[0] in (':', '/'):
             self.bad_sequence += vi_keys
-            self.index += len(vi_keys)
+            return None, len(vi_keys)
         else:
             self.bad_sequence += vi_keys[0]
-            self.index += 1
+            return None, 1
 
     def imode_sequence(self, new_input):
         """Factory for Action that Sends Input to Command-Line"""
