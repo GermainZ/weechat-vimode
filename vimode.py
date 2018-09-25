@@ -205,7 +205,8 @@ def cmd_nmap(args):
                                         key=lambda x: x[0].lower()):
                 pretty_keys = keys
                 for pttrn, repl in [(r'\u0001([A-Z])', r'<C-\1>'),
-                                    (r'\u0001\[([A-Z])', r'<M-\1>')]:
+                                    (r'\u0001\[([A-Z])', r'<M-\1>'),
+                                    ('"', '\\"')]:
                     pretty_keys = re.sub(pttrn, repl, pretty_keys)
 
                 pretty_mapping = mapping
@@ -1083,12 +1084,6 @@ class UserMapping:
         for _ in range(count):
             bad_sequence_list = []
             for action in self.get_cmd_actions(full_cmd, first_call=True):
-                debug_print('action', action)
-                debug_print('buf', buf)
-                debug_print('input_line', input_line)
-                debug_print('cur', cur)
-                debug_print('count', count)
-
                 if self.bad_sequence:
                     bad_sequence_list.append(self.bad_sequence)
 
@@ -1140,8 +1135,6 @@ class UserMapping:
             yield functools.partial(do_command, cmd)
             return
 
-        debug_print('cmd', cmd)
-
         if lcmd.startswith('<cr>'):
             yield functools.partial(do_command, '/input return')
             yield from self.get_cmd_actions(cmd[4:])
@@ -1167,14 +1160,10 @@ class UserMapping:
 
         for keys, command in VI_KEYS.items():
             if cmd.startswith(keys):
-                debug_print('keys', keys)
-                debug_print('command', command)
-
                 if isinstance(command, str):
                     yield functools.partial(do_command, command)
                 else:
                     yield command
-                debug_print('cmd[len(keys)', cmd[len(keys):])
                 yield from self.get_cmd_actions(cmd[len(keys):])
                 return
 
@@ -1199,7 +1188,6 @@ class UserMapping:
             return
 
         if cmd[0] in (':', '/'):
-            debug_print('/command [options]', cmd)
             self.bad_sequence += cmd
             return
 
@@ -1928,15 +1916,6 @@ def get_keys_and_count(combo):
 
 # Other helpers.
 # --------------
-def debug_print(name, value):
-    """Prints the Name and Value of a Variable
-
-    Toggle the DEBUGGING_ENABLED to enable/disable debug output.
-    """
-    DEBUGGING_ENABLED = False
-    if DEBUGGING_ENABLED:
-        print('[DEBUG] {} = {}'.format(name, value))
-
 def set_mode(arg):
     """Set the current mode and update the bar mode indicator."""
     global mode
