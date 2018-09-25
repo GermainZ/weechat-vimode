@@ -1136,14 +1136,17 @@ class UserMapping:
         # >>> OLD-STYLE USER MAPPING
         if all(old_style_cmd_conditions):
             yield functools.partial(do_command, vi_keys)
-            return
         # >>> NEW-STYLE USER MAPPING
         else:
             for action in self.new_style(vi_keys):
                 yield action
 
     def new_style(self, vi_keys):
-        """Parse New-Style User Mapping"""
+        """Parse New-Style User Mapping
+
+        Yields:
+            Callable object: action(buf, input_line, cur, count)
+        """
         index = 0
         while index < len(vi_keys):
             match = re.match('^[1-9][0-9]*', vi_keys[index:])
@@ -1167,28 +1170,21 @@ class UserMapping:
         Returns:
             2-tuple: (Callable_Action, Index_Where_Parsing_Stoped)
         """
-        # >>> ENTER
-        if vi_keys.lower().startswith('<cr>'):
-            set_mode('NORMAL')
-            return functools.partial(do_command, '/input return'), 4
-
         # >>> INSERT MODE SEQUENCE
         if mode == 'INSERT':
             match = re.search('<(cr|esc)>', vi_keys.lower())
+            enter = False
 
             if match:
                 set_mode('NORMAL')
-                index = match.start()
-                group = match.group()
-                if group == '<esc>':
-                    index = match.end()
-                else:
-                    index = match.start()
+                index = match.end()
+                if match.group() == '<cr>':
+                    enter = True
             else:
-                index = len(vi_keys)
+                index = start = len(vi_keys)
 
             start = match.start() if match else len(vi_keys)
-            return self.imode_sequence(vi_keys[:start]), index
+            return self.imode_sequence(vi_keys[:start], enter=enter), index
 
         # >>> VI_KEY
         for keys, command in VI_KEYS.items():
@@ -1227,7 +1223,7 @@ class UserMapping:
             self.bad_sequence += vi_keys[0]
             return None, 1
 
-    def imode_sequence(self, new_input):
+    def imode_sequence(self, new_input, *, enter=False):
         """Factory for Action that Sends Input to Command-Line"""
         def action(buf, input_line, cur, count):
             for _ in range(max(int(count), 1)):
@@ -1241,6 +1237,8 @@ class UserMapping:
 
                 input_line = weechat.buffer_get_string(buf, "input")
                 cur = weechat.buffer_get_integer(buf, "input_pos")
+                if enter:
+                    do_command('/input return', buf, input_line, cur, 0)
         return action
 
 
