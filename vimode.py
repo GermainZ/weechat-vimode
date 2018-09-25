@@ -1071,21 +1071,12 @@ class UserMapping:
         self.bad_sequence = ""
 
     def __call__(self, buf, input_line, cur, count):
-        if re.search('#{\d+}', self.rhs) is not None:
-            if count:
-                rhs = re.sub('#{\d+}', str(count), self.rhs)
-            else:
-                rhs = re.sub('#{(\d+)}', r'\1', self.rhs)
-            count = 1
-        else:
-            rhs = self.rhs
-            count = max(count, 1)
-
+        rhs, count = self.process_count(count)
         for _ in range(count):
-            bad_sequence_list = []
+            bad_seq_list = []
             for action in self.parse(rhs, first_call=True):
                 if self.bad_sequence:
-                    bad_sequence_list.append(self.bad_sequence)
+                    bad_seq_list.append(self.bad_sequence)
 
                 action(buf, input_line, cur, self.count)
 
@@ -1097,37 +1088,58 @@ class UserMapping:
                 cur = weechat.buffer_get_integer(buf, "input_pos")
 
             if self.bad_sequence:
-                bad_sequence_list.append(self.bad_sequence)
+                bad_seq_list.append(self.bad_sequence)
                 self.bad_sequence = ""
 
-            for bad_seq in bad_sequence_list:
-                error_msg = 'Failed to parse "{}" sequence ' \
-                    'in the following user mapping: ' \
-                    '({}, {}).'.format(bad_seq, self.lhs, self.rhs)
-                print_warning(error_msg)
+            self.report_errors(bad_seq_list)
+
+    def process_count(self, count):
+        """Checks for a count tag of the form #{N} where N is some integer.
+
+        If a count tag is found, consume the count by substituting it in place
+        of the tag.
+        """
+        if re.search('#{\d+}', self.rhs) is not None:
+            if count:
+                rhs = re.sub('#{\d+}', str(count), self.rhs)
+            else:
+                rhs = re.sub('#{(\d+)}', r'\1', self.rhs)
+            new_count = 1
+        else:
+            rhs = self.rhs
+            new_count = max(count, 1)
+        return rhs, new_count
+
+    def report_errors(self, bad_seq_list):
+        """Alert user about any parsing errors that occurred."""
+        for bad_seq in bad_seq_list:
+            error_msg = 'Failed to parse "{}" sequence ' \
+                'in the following user mapping: ' \
+                '({}, {}).'.format(bad_seq, self.lhs, self.rhs)
+            print_warning(error_msg)
 
     def parse(self, vi_keys, *, first_call=False):
-        """Generator for Callable Actions
+        """Vi_Keys Parser that Generates Callable Actions
 
         Yields:
-            Callable object: func(buf, input_line, cur, count)
+            Callable object: action(buf, input_line, cur, count)
         """
         if vi_keys == '':
             return
 
-        lower_vi_keys = vi_keys.lower()
-
+        # >>> OLD-STYLE USER MAPPING
         command_pttrn = '[:/].*?<cr>'
         old_style_cmd_conditions = [
             first_call,
             vi_keys[0] == '/',
-            re.match(command_pttrn, lower_vi_keys) is None,
+            re.match(command_pttrn, vi_keys.lower()) is None,
         ]
 
         if all(old_style_cmd_conditions):
             yield functools.partial(do_command, vi_keys)
             return
 
+        # >>> COUNT
         match = re.match('^[1-9][0-9]*', vi_keys)
         if match:
             end = match.end()
@@ -1135,16 +1147,18 @@ class UserMapping:
             yield from self.parse(vi_keys[end:])
             return
 
-        if lower_vi_keys.startswith('<cr>'):
+        # >>> ENTER
+        if vi_keys.lower().startswith('<cr>'):
             yield functools.partial(do_command, '/input return')
             yield from self.parse(vi_keys[4:])
             return
 
+        # >>> INSERT MODE SEQUENCE
         if mode == 'INSERT':
-            match = re.search('<(esc|cr)>', lower_vi_keys)
+            match = re.search('<(esc|cr)>', vi_keys.lower())
             end = match.start() if match else len(vi_keys)
 
-            yield self.insert_input_action(vi_keys[:end])
+            yield self.imode_sequence(vi_keys[:end])
 
             if match:
                 group = match.group()
@@ -1158,6 +1172,7 @@ class UserMapping:
 
             return
 
+        # >>> VI_KEY
         for keys, command in VI_KEYS.items():
             if vi_keys.startswith(keys):
                 if isinstance(command, str):
@@ -1167,12 +1182,14 @@ class UserMapping:
                 yield from self.parse(vi_keys[len(keys):])
                 return
 
+        # >>> VI_MOTION
         for motion in VI_MOTIONS:
             if vi_keys.startswith(motion):
                 yield functools.partial(do_motion, motion)
                 yield from self.parse(vi_keys[len(motion):])
                 return
 
+        # >>> VI_OPERATOR
         if len(vi_keys) > 1 and vi_keys[0] in VI_OPERATORS:
             for motion in VI_MOTIONS:
                 if vi_keys[1:].startswith(motion):
@@ -1181,7 +1198,8 @@ class UserMapping:
                     yield from self.parse(vi_keys[len(motion) + 1:])
                     return
 
-        match = re.match(command_pttrn, lower_vi_keys)
+        # >>> COMMAND
+        match = re.match(command_pttrn, vi_keys.lower())
         if match:
             end = match.end()
             yield functools.partial(do_command,
@@ -1189,6 +1207,7 @@ class UserMapping:
             yield from self.parse(vi_keys[end:])
             return
 
+        # >>> PARSING ERROR
         if vi_keys[0] in (':', '/'):
             self.bad_sequence += vi_keys
             return
@@ -1196,7 +1215,7 @@ class UserMapping:
         self.bad_sequence += vi_keys[0]
         yield from self.parse(vi_keys[1:])
 
-    def insert_input_action(self, new_input):
+    def imode_sequence(self, new_input):
         """Factory for Action that Sends Input to Command-Line"""
         def action(buf, input_line, cur, count):
             p = int(cur)
