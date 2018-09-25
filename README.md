@@ -218,9 +218,9 @@ information). `&` in the replacement is also substituted by the pattern. If the
 User mappings are created using `:nmap {lhs} {rhs}`. The `{rhs}` argument consists of any
 combination of the following:
 
-* A WeeChat command specified with: `/command [options]<CR>`. You may also use a colon (`:`)
+* A WeeChat command, specified with: `/command [options]<CR>`. You may also use a colon (`:`)
   in place of the forward slash (`/`) if you wish.
-* An INSERT mode action can be specified by an `A`, `I`, `i`, or `a` to enter INSERT mode; then an
+* An INSERT mode action, specified by an `A`, `I`, `i`, or `a` to enter INSERT mode; then an
   (optional) arbitrary string of characters to send to the command-line; and then (optionally) ending the
   pattern with a `<CR>` (to submit the text to the current buffer) or a `<Esc>` to end the INSERT
   mode action and go back to NORMAL mode.
@@ -229,30 +229,30 @@ combination of the following:
 
 A count may be specified either in the mapping itself or before triggering the mapping.
 Furthermore, you may place the following count tag anywhere (except inside an INSERT action) within
-the binding (`{rhs}`): `#{N}`, where `N` is some arbitrary integer. This special tag is used to
-"consume" an external count. If no external count is provided, `N` will be used as the default
+the binding (`{rhs}`): `#{N}`, where `N` is some arbitrary integer. This special "count tag" is used to
+consume an external count. If no external count is provided, `N` will be used as the default
 count. This will all probably be easier to grasp after seeing a few examples:
 
 ### Examples
 
-1) Commands can be bound together easily:
+1) Commands can be concatenated together:
      - INPUT: `:nmap h /cmd1<CR>/cmd2<CR>`
      - OUTPUT [h]: Runs `/cmd1` then `/cmd2`.
 
-2) User defined bindings can be followed:
+2) User defined bindings will be followed:
      - INPUT: `:nmap j /buffer 5<CR>h`
      - OUTPUT [j]: Go to the fifth buffer, then run `/cmd1`, and then run `/cmd2`.
 
 3) Bindings can take advantage of INSERT mode:
-     - INPUT: `:nmap k i MESSAGE<Esc>0i`
-     - OUTPUT [k]: Prints ' MESSAGE' to command-line and then returns the user to the beginning of the line. The user is left in INSERT mode.
+     - INPUT: `:nmap k i/msg <Esc>0i`
+     - OUTPUT [k]: Prints "/msg " to the command-line and then returns the user to the beginning of the line. The user is left in INSERT mode.
 
 4) Counts are respected both internally and externally:
      - INPUT: `:nmap j 3J`
      - OUTPUT [j]: Go three buffers down.
      - OUTPUT [3j]: Go nine buffers down.
 
-5) Special "count tag" gives you more flexibility:
+5) Special "count tag" gives you more flexibility when using counts:
      - INPUT: `:nmap @ /buffer #{3}<CR>`
      - OUTPUT [7@]: Go to the seventh buffer.
      - OUTPUT [@]: Go to the third buffer.
