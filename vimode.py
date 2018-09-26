@@ -21,6 +21,7 @@
 #
 
 
+from abc import ABCMeta, abstractproperty
 import csv
 import functools
 import json
@@ -1062,65 +1063,14 @@ VI_KEYS = {'j': "/window scroll_down",
 for i in range(10, 99):
     VI_KEYS['\x01[j%s' % i] = "/buffer %s" % i
 
-class UserMapping:
-    """Wraps User Mapping Defined by :nmap Command"""
-    def __init__(self, lhs, rhs):
-        self.lhs = lhs
-        self.rhs = rhs
+class UMParser(metaclass=ABCMeta):
+    """User Mapping Parser
 
-    def __call__(self, buf, input_line, cur, count):
-        rhs, count = self.process_count(count)
-        self.count = 0
-        self.bad_sequence = ""
-        for _ in range(count):
-            bad_seq_list = []
-            for action in self.parse(rhs):
-                if self.bad_sequence:
-                    bad_seq_list.append(self.bad_sequence)
-
-                action(buf, input_line, cur, self.count)
-
-                # Reset count unless last key triggers
-                # INSERT mode ('i', 'a', 'I', 'A', ...).
-                if mode != 'INSERT':
-                    self.count = 0
-
-                self.bad_sequence = ""
-
-                buf = weechat.current_buffer()
-                input_line = weechat.buffer_get_string(buf, "input")
-                cur = weechat.buffer_get_integer(buf, "input_pos")
-
-            if self.bad_sequence:
-                bad_seq_list.append(self.bad_sequence)
-                self.bad_sequence = ""
-
-            self.report_errors(bad_seq_list)
-
-    def process_count(self, count):
-        """Checks for a special count tag of the form #{N} where N is some integer.
-
-        If a count tag is found, consume the count by substituting it in place
-        of the tag.
-        """
-        if re.search('#{\d+}', self.rhs) is not None:
-            if count:
-                rhs = re.sub('#{\d+}', str(count), self.rhs)
-            else:
-                rhs = re.sub('#{(\d+)}', r'\1', self.rhs)
-            new_count = 1
-        else:
-            rhs = self.rhs
-            new_count = max(count, 1)
-        return rhs, new_count
-
-    def report_errors(self, bad_seq_list):
-        """Alert user about any parsing errors that occurred."""
-        for bad_seq in bad_seq_list:
-            error_msg = 'Failed to parse "{}" sequence ' \
-                'in the following user mapping: ' \
-                '("{}", "{}").'.format(bad_seq, self.lhs, self.rhs)
-            print_warning(error_msg)
+    Handles parsing for UserMapping class.
+    """
+    @abstractproperty
+    def count(self):
+        """Required Attribute"""
 
     def parse(self, vi_keys):
         """Vi_Keys parser that generates callable actions.
@@ -1149,9 +1099,9 @@ class UserMapping:
         """
         index = 0
         while index < len(vi_keys):
+            # >>> COUNT
             match = re.match('^[1-9][0-9]*', vi_keys[index:])
             if match:
-                # >>> COUNT
                 end = match.end() + index
                 self.count += int(vi_keys[index:end])
                 index += match.end()
@@ -1184,7 +1134,7 @@ class UserMapping:
                 index = start = len(vi_keys)
 
             start = match.start() if match else len(vi_keys)
-            return self.imode_sequence(vi_keys[:start], enter=enter), index
+            return self.imode_capture(vi_keys[:start], enter=enter), index
 
         # >>> VI_KEY
         for keys, command in VI_KEYS.items():
@@ -1207,7 +1157,7 @@ class UserMapping:
                                                vi_keys[:len(motion) + 1])
                     return action, len(motion) + 1
 
-        # >>> COMMAND
+        # >>> WEECHAT COMMAND
         match = re.match('[:/].*?<cr>', vi_keys.lower())
         if match:
             end = match.end()
@@ -1223,8 +1173,12 @@ class UserMapping:
             self.bad_sequence += vi_keys[0]
             return None, 1
 
-    def imode_sequence(self, new_input, *, enter=False):
-        """Factory for Action that Sends Input to Command-Line"""
+    def imode_capture(self, new_input, *, enter=False):
+        """Factory for Action that Captures Input and Sends it to Command-Line
+
+        This is expected when the mappings previous actions have set
+        INSERT mode.
+        """
         def action(buf, input_line, cur, count):
             for _ in range(max(int(count), 1)):
                 p = int(cur)
@@ -1240,6 +1194,68 @@ class UserMapping:
                 if enter:
                     do_command('/input return', buf, input_line, cur, 0)
         return action
+
+class UserMapping(UMParser):
+    """Wraps User Mapping Defined by :nmap Command"""
+    count = 0
+
+    def __init__(self, lhs, rhs):
+        self.lhs = lhs
+        self.rhs = rhs
+
+    def __call__(self, buf, input_line, cur, count):
+        rhs, count = self.process_count(count)
+        self.bad_sequence = ""
+        for _ in range(count):
+            bad_seq_list = []
+            for action in self.parse(rhs):
+                if self.bad_sequence:
+                    bad_seq_list.append(self.bad_sequence)
+
+                action(buf, input_line, cur, self.count)
+
+                # Reset count unless last key triggers
+                # INSERT mode ('i', 'a', 'I', 'A', ...).
+                if mode != 'INSERT':
+                    self.count = 0
+
+                self.bad_sequence = ""
+
+                buf = weechat.current_buffer()
+                input_line = weechat.buffer_get_string(buf, "input")
+                cur = weechat.buffer_get_integer(buf, "input_pos")
+
+            self.count = 0
+            if self.bad_sequence:
+                bad_seq_list.append(self.bad_sequence)
+                self.bad_sequence = ""
+
+            self.report_errors(bad_seq_list)
+
+    def process_count(self, count):
+        """Checks for a special count tag of the form #{N} where N is some integer.
+
+        If a count tag is found, consume the count by substituting it in place
+        of the tag.
+        """
+        if re.search('#{\d+}', self.rhs) is not None:
+            if count:
+                rhs = re.sub('#{\d+}', str(count), self.rhs)
+            else:
+                rhs = re.sub('#{(\d+)}', r'\1', self.rhs)
+            new_count = 1
+        else:
+            rhs = self.rhs
+            new_count = max(count, 1)
+        return rhs, new_count
+
+    def report_errors(self, bad_seq_list):
+        """Alert user about any parsing errors that occurred."""
+        for bad_seq in bad_seq_list:
+            error_msg = 'Failed to parse "{}" sequence ' \
+                'in the following user mapping: ' \
+                '("{}", "{}").'.format(bad_seq, self.lhs, self.rhs)
+            print_warning(error_msg)
 
 
 # Key handling.
