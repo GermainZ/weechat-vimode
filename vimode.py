@@ -255,6 +255,12 @@ def cmd_nunmap(args):
         mappings = vimode_settings['user_mappings']
         if key in mappings:
             del mappings[key]
+            del VI_KEYS[key]
+
+            # restore default keys
+            if key in VI_DEFAULT_KEYS:
+                VI_KEYS[key] = VI_DEFAULT_KEYS[key]
+
             weechat.config_set_plugin('user_mappings', json.dumps(mappings))
             vimode_settings['user_mappings'] = mappings
         else:
@@ -993,75 +999,79 @@ def key_ctrl_r(buf, input_line, cur, count):
 
 # String values will be executed as normal WeeChat commands.
 # For functions, see `key_base()` for reference.
-VI_KEYS = {'j': "/window scroll_down",
-           'k': "/window scroll_up",
-           'G': key_G,
-           'gg': "/window scroll_top",
-           'x': "/input delete_next_char",
-           'X': "/input delete_previous_char",
-           'dd': "/input delete_line",
-           'D': "/input delete_end_of_line",
-           'cc': key_cc,
-           'C': key_C,
-           'i': key_i,
-           'a': key_a,
-           'A': key_A,
-           'I': key_I,
-           'yy': key_yy,
-           'p': key_p,
-           'gt': "/buffer -1",
-           'K': "/buffer -1",
-           'gT': "/buffer +1",
-           'J': "/buffer +1",
-           'r': key_r,
-           'R': key_R,
-           '~': key_tilda,
-           'nt': "/bar scroll nicklist * -100%",
-           'nT': "/bar scroll nicklist * +100%",
-           '\x01[[A': "/input history_previous",
-           '\x01[[B': "/input history_next",
-           '\x01[[C': "/input move_next_char",
-           '\x01[[D': "/input move_previous_char",
-           '\x01[[H': "/input move_beginning_of_line",
-           '\x01[[F': "/input move_end_of_line",
-           '\x01[[5~': "/window page_up",
-           '\x01[[6~': "/window page_down",
-           '\x01[[3~': "/input delete_next_char",
-           '\x01[[2~': key_i,
-           '\x01M': "/input return",
-           '\x01?': "/input move_previous_char",
-           ' ': "/input move_next_char",
-           '\x01[j': key_alt_j,
-           '\x01[1': "/buffer *1",
-           '\x01[2': "/buffer *2",
-           '\x01[3': "/buffer *3",
-           '\x01[4': "/buffer *4",
-           '\x01[5': "/buffer *5",
-           '\x01[6': "/buffer *6",
-           '\x01[7': "/buffer *7",
-           '\x01[8': "/buffer *8",
-           '\x01[9': "/buffer *9",
-           '\x01[0': "/buffer *10",
-           '\x01^': "/input jump_last_buffer_displayed",
-           '\x01D': "/window page_down",
-           '\x01U': "/window page_up",
-           '\x01Wh': "/window left",
-           '\x01Wj': "/window down",
-           '\x01Wk': "/window up",
-           '\x01Wl': "/window right",
-           '\x01W=': "/window balance",
-           '\x01Wx': "/window swap",
-           '\x01Ws': "/window splith",
-           '\x01Wv': "/window splitv",
-           '\x01Wq': "/window merge",
-           ';': key_semicolon,
-           ',': key_comma,
-           'u': key_u,
-           '\x01R': key_ctrl_r}
+VI_DEFAULT_KEYS = {'j': "/window scroll_down",
+                   'k': "/window scroll_up",
+                   'G': key_G,
+                   'gg': "/window scroll_top",
+                   'x': "/input delete_next_char",
+                   'X': "/input delete_previous_char",
+                   'dd': "/input delete_line",
+                   'D': "/input delete_end_of_line",
+                   'cc': key_cc,
+                   'C': key_C,
+                   'i': key_i,
+                   'a': key_a,
+                   'A': key_A,
+                   'I': key_I,
+                   'yy': key_yy,
+                   'p': key_p,
+                   'gt': "/buffer -1",
+                   'K': "/buffer -1",
+                   'gT': "/buffer +1",
+                   'J': "/buffer +1",
+                   'r': key_r,
+                   'R': key_R,
+                   '~': key_tilda,
+                   'nt': "/bar scroll nicklist * -100%",
+                   'nT': "/bar scroll nicklist * +100%",
+                   '\x01[[A': "/input history_previous",
+                   '\x01[[B': "/input history_next",
+                   '\x01[[C': "/input move_next_char",
+                   '\x01[[D': "/input move_previous_char",
+                   '\x01[[H': "/input move_beginning_of_line",
+                   '\x01[[F': "/input move_end_of_line",
+                   '\x01[[5~': "/window page_up",
+                   '\x01[[6~': "/window page_down",
+                   '\x01[[3~': "/input delete_next_char",
+                   '\x01[[2~': key_i,
+                   '\x01M': "/input return",
+                   '\x01?': "/input move_previous_char",
+                   ' ': "/input move_next_char",
+                   '\x01[j': key_alt_j,
+                   '\x01[1': "/buffer *1",
+                   '\x01[2': "/buffer *2",
+                   '\x01[3': "/buffer *3",
+                   '\x01[4': "/buffer *4",
+                   '\x01[5': "/buffer *5",
+                   '\x01[6': "/buffer *6",
+                   '\x01[7': "/buffer *7",
+                   '\x01[8': "/buffer *8",
+                   '\x01[9': "/buffer *9",
+                   '\x01[0': "/buffer *10",
+                   '\x01^': "/input jump_last_buffer_displayed",
+                   '\x01D': "/window page_down",
+                   '\x01U': "/window page_up",
+                   '\x01Wh': "/window left",
+                   '\x01Wj': "/window down",
+                   '\x01Wk': "/window up",
+                   '\x01Wl': "/window right",
+                   '\x01W=': "/window balance",
+                   '\x01Wx': "/window swap",
+                   '\x01Ws': "/window splith",
+                   '\x01Wv': "/window splitv",
+                   '\x01Wq': "/window merge",
+                   ';': key_semicolon,
+                   ',': key_comma,
+                   'u': key_u,
+                   '\x01R': key_ctrl_r}
 
 # Add alt-j<number> bindings.
 for i in range(10, 99):
-    VI_KEYS['\x01[j%s' % i] = "/buffer %s" % i
+    VI_DEFAULT_KEYS['\x01[j%s' % i] = "/buffer %s" % i
+
+# VI_DEFAULT_KEYS are kept in a separate data structure to ensure
+# that they can not be permenantly deleted by the `:nunmap` command.
+VI_KEYS = VI_DEFAULT_KEYS.copy()
 
 class UMParser(metaclass=ABCMeta):
     """User Mapping Parser
