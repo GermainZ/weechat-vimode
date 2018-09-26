@@ -22,6 +22,7 @@
 
 
 from abc import ABCMeta, abstractproperty
+from contextlib import contextmanager
 import csv
 import functools
 import json
@@ -1208,39 +1209,58 @@ class UMParser(metaclass=ABCMeta):
 class UserMapping(UMParser):
     """Wraps User Mapping Defined by :nmap Command"""
     count = 0
+    locked = False
 
     def __init__(self, lhs, rhs):
         self.lhs = lhs
         self.rhs = rhs
 
     def __call__(self, buf, input_line, cur, count):
+        if self.locked:
+            error_fmt = ("Somthing's not right. The following user mapping "
+                         "is recursing on itself: (\"{}\", \"{}\").")
+            print_warning(error_fmt.format(self.lhs, self.rhs))
+            return
+
         rhs, count = self.process_count(count)
         self.bad_sequence = ""
-        for _ in range(count):
-            bad_seq_list = []
-            for action in self.parse(rhs):
+        with self.lock():
+            for _ in range(count):
+                bad_seq_list = []
+                for action in self.parse(rhs):
+                    if self.bad_sequence:
+                        bad_seq_list.append(self.bad_sequence)
+
+                    action(buf, input_line, cur, self.count)
+
+                    # Reset count unless last key triggers
+                    # INSERT mode ('i', 'a', 'I', 'A', ...).
+                    if mode != 'INSERT':
+                        self.count = 0
+
+                    self.bad_sequence = ""
+
+                    buf = weechat.current_buffer()
+                    input_line = weechat.buffer_get_string(buf, "input")
+                    cur = weechat.buffer_get_integer(buf, "input_pos")
+
+                self.count = 0
                 if self.bad_sequence:
                     bad_seq_list.append(self.bad_sequence)
+                    self.bad_sequence = ""
 
-                action(buf, input_line, cur, self.count)
+                self.report_errors(bad_seq_list)
 
-                # Reset count unless last key triggers
-                # INSERT mode ('i', 'a', 'I', 'A', ...).
-                if mode != 'INSERT':
-                    self.count = 0
+    @contextmanager
+    def lock(self):
+        """ Access Lock
 
-                self.bad_sequence = ""
-
-                buf = weechat.current_buffer()
-                input_line = weechat.buffer_get_string(buf, "input")
-                cur = weechat.buffer_get_integer(buf, "input_pos")
-
-            self.count = 0
-            if self.bad_sequence:
-                bad_seq_list.append(self.bad_sequence)
-                self.bad_sequence = ""
-
-            self.report_errors(bad_seq_list)
+        Protects against infinite recursion which could be triggered by
+        defining a mapping in terms of itself, for example.
+        """
+        self.locked = True
+        yield
+        self.locked = False
 
     def process_count(self, count):
         """Checks for a special count tag of the form #{N} where N is some integer.
