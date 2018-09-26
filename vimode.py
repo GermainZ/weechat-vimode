@@ -1169,11 +1169,27 @@ class UMParser(metaclass=ABCMeta):
                     return action, len(motion) + 1
 
         # >>> WEECHAT COMMAND
-        match = re.match('[:/].*?<cr>', vi_keys.lower())
+        match = re.search('^[:/](.*?)<(CR|cr)>', vi_keys)
         if match:
             end = match.end()
-            action = functools.partial(do_command,
-                                       '/{}'.format(vi_keys[1:end - 4]))
+            group = match.groups()[0]
+            cmd_list = group.split(maxsplit=1)
+            cmd = cmd_list[0]
+            args = cmd_list[1] if len(cmd_list) == 2 else ''
+
+            if re.match('b[1-9][0-9]*', cmd):
+                args = '{} {}'.format(cmd[1:], args)
+                cmd = cmd[0]
+
+            if cmd in VI_COMMANDS:
+                if isinstance(VI_COMMANDS[cmd], str):
+                    full_cmd = '{} {}'.format(VI_COMMANDS[cmd], args)
+                    action = functools.partial(do_command, full_cmd)
+                else:
+                    action = self.vi_cmd_action(cmd, args)
+            else:
+                action = functools.partial(do_command,
+                                           '/{}'.format(vi_keys[1:end - 4]))
             return action, end
 
         # >>> PARSING ERROR
@@ -1183,6 +1199,12 @@ class UMParser(metaclass=ABCMeta):
         else:
             self.bad_sequence += vi_keys[0]
             return None, 1
+
+    def vi_cmd_action(self, cmd, args):
+        """Factory for VI_COMMAND Action"""
+        def action(buf, input_line, cur, count):
+            VI_COMMANDS[cmd](args)
+        return action
 
     def imode_capture(self, new_input, *, enter=False):
         """Factory for Action that Captures Input and Sends it to Command-Line
@@ -1258,9 +1280,11 @@ class UserMapping(UMParser):
         Protects against infinite recursion which could be triggered by
         defining a mapping in terms of itself, for example.
         """
-        self.locked = True
-        yield
-        self.locked = False
+        try:
+            self.locked = True
+            yield
+        finally:
+            self.locked = False
 
     def process_count(self, count):
         """Checks for a special count tag of the form #{N} where N is some integer.
