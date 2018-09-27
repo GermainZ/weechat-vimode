@@ -208,6 +208,10 @@ def cmd_nmap(args):
                 pretty_keys = keys
                 for pttrn, repl in [(r'\u0001([A-Z])', r'<C-\1>'),
                                     (r'\u0001\[([A-Z])', r'<M-\1>'),
+                                    (r'\u0001\[\[A', r'<Up>'),
+                                    (r'\u0001\[\[B', r'<Down>'),
+                                    (r'\u0001\[\[C', r'<Right>'),
+                                    (r'\u0001\[\[D', r'<Left>'),
                                     ('"', '\\"')]:
                     pretty_keys = re.sub(pttrn, repl, pretty_keys)
 
