@@ -21,7 +21,10 @@
 #
 
 
+from abc import ABCMeta, abstractproperty
+from contextlib import contextmanager
 import csv
+import functools
 import json
 import os
 import re
@@ -30,8 +33,8 @@ try:
     from StringIO import StringIO
 except ImportError:
     from io import StringIO
-import time
 import sys
+import time
 
 import weechat
 
@@ -190,13 +193,34 @@ def cmd_nmap(args):
     See Also:
         `cmd_unmap()`.
     """
-    args = args.strip()
+    args = args.lstrip()
     if not args:
         mappings = vimode_settings['user_mappings']
         if mappings:
-            weechat.prnt("", "User-defined key mappings:")
-            for key, mapping in mappings.items():
-                weechat.prnt("", "{} -> {}".format(key, mapping))
+            title = "----- Vimode User Mappings -----"
+            bar = '-' * len(title)
+
+            weechat.prnt("", bar)
+            weechat.prnt("", title)
+            weechat.prnt("", bar)
+            for keys, mapping in sorted(mappings.items(),
+                                        key=lambda x: x[0].lower()):
+                pretty_keys = keys
+                for pttrn, repl in [(r'\u0001([A-Z])', r'<C-\1>'),
+                                    (r'\u0001\[([A-Z])', r'<M-\1>'),
+                                    (r'\u0001\[\[A', r'<Up>'),
+                                    (r'\u0001\[\[B', r'<Down>'),
+                                    (r'\u0001\[\[C', r'<Right>'),
+                                    (r'\u0001\[\[D', r'<Left>'),
+                                    ('"', '\\"')]:
+                    pretty_keys = re.sub(pttrn, repl, pretty_keys)
+
+                pretty_mapping = mapping
+                for pttrn, repl in [('"', '\\"')]:
+                    pretty_mapping = re.sub(pttrn, repl, pretty_mapping)
+
+                msg_fmt = '("{}", "{}")'
+                weechat.prnt("", msg_fmt.format(pretty_keys, pretty_mapping))
         else:
             weechat.prnt("", "nmap: no mapping found.")
     elif " " not in args:
@@ -236,6 +260,12 @@ def cmd_nunmap(args):
         mappings = vimode_settings['user_mappings']
         if key in mappings:
             del mappings[key]
+            del VI_KEYS[key]
+
+            # restore default keys
+            if key in VI_DEFAULT_KEYS:
+                VI_KEYS[key] = VI_DEFAULT_KEYS[key]
+
             weechat.config_set_plugin('user_mappings', json.dumps(mappings))
             vimode_settings['user_mappings'] = mappings
         else:
@@ -974,75 +1004,316 @@ def key_ctrl_r(buf, input_line, cur, count):
 
 # String values will be executed as normal WeeChat commands.
 # For functions, see `key_base()` for reference.
-VI_KEYS = {'j': "/window scroll_down",
-           'k': "/window scroll_up",
-           'G': key_G,
-           'gg': "/window scroll_top",
-           'x': "/input delete_next_char",
-           'X': "/input delete_previous_char",
-           'dd': "/input delete_line",
-           'D': "/input delete_end_of_line",
-           'cc': key_cc,
-           'C': key_C,
-           'i': key_i,
-           'a': key_a,
-           'A': key_A,
-           'I': key_I,
-           'yy': key_yy,
-           'p': key_p,
-           'gt': "/buffer -1",
-           'K': "/buffer -1",
-           'gT': "/buffer +1",
-           'J': "/buffer +1",
-           'r': key_r,
-           'R': key_R,
-           '~': key_tilda,
-           'nt': "/bar scroll nicklist * -100%",
-           'nT': "/bar scroll nicklist * +100%",
-           '\x01[[A': "/input history_previous",
-           '\x01[[B': "/input history_next",
-           '\x01[[C': "/input move_next_char",
-           '\x01[[D': "/input move_previous_char",
-           '\x01[[H': "/input move_beginning_of_line",
-           '\x01[[F': "/input move_end_of_line",
-           '\x01[[5~': "/window page_up",
-           '\x01[[6~': "/window page_down",
-           '\x01[[3~': "/input delete_next_char",
-           '\x01[[2~': key_i,
-           '\x01M': "/input return",
-           '\x01?': "/input move_previous_char",
-           ' ': "/input move_next_char",
-           '\x01[j': key_alt_j,
-           '\x01[1': "/buffer *1",
-           '\x01[2': "/buffer *2",
-           '\x01[3': "/buffer *3",
-           '\x01[4': "/buffer *4",
-           '\x01[5': "/buffer *5",
-           '\x01[6': "/buffer *6",
-           '\x01[7': "/buffer *7",
-           '\x01[8': "/buffer *8",
-           '\x01[9': "/buffer *9",
-           '\x01[0': "/buffer *10",
-           '\x01^': "/input jump_last_buffer_displayed",
-           '\x01D': "/window page_down",
-           '\x01U': "/window page_up",
-           '\x01Wh': "/window left",
-           '\x01Wj': "/window down",
-           '\x01Wk': "/window up",
-           '\x01Wl': "/window right",
-           '\x01W=': "/window balance",
-           '\x01Wx': "/window swap",
-           '\x01Ws': "/window splith",
-           '\x01Wv': "/window splitv",
-           '\x01Wq': "/window merge",
-           ';': key_semicolon,
-           ',': key_comma,
-           'u': key_u,
-           '\x01R': key_ctrl_r}
+VI_DEFAULT_KEYS = {'j': "/window scroll_down",
+                   'k': "/window scroll_up",
+                   'G': key_G,
+                   'gg': "/window scroll_top",
+                   'x': "/input delete_next_char",
+                   'X': "/input delete_previous_char",
+                   'dd': "/input delete_line",
+                   'D': "/input delete_end_of_line",
+                   'cc': key_cc,
+                   'C': key_C,
+                   'i': key_i,
+                   'a': key_a,
+                   'A': key_A,
+                   'I': key_I,
+                   'yy': key_yy,
+                   'p': key_p,
+                   'gt': "/buffer -1",
+                   'K': "/buffer -1",
+                   'gT': "/buffer +1",
+                   'J': "/buffer +1",
+                   'r': key_r,
+                   'R': key_R,
+                   '~': key_tilda,
+                   'nt': "/bar scroll nicklist * -100%",
+                   'nT': "/bar scroll nicklist * +100%",
+                   '\x01[[A': "/input history_previous",
+                   '\x01[[B': "/input history_next",
+                   '\x01[[C': "/input move_next_char",
+                   '\x01[[D': "/input move_previous_char",
+                   '\x01[[H': "/input move_beginning_of_line",
+                   '\x01[[F': "/input move_end_of_line",
+                   '\x01[[5~': "/window page_up",
+                   '\x01[[6~': "/window page_down",
+                   '\x01[[3~': "/input delete_next_char",
+                   '\x01[[2~': key_i,
+                   '\x01M': "/input return",
+                   '\x01?': "/input move_previous_char",
+                   ' ': "/input move_next_char",
+                   '\x01[j': key_alt_j,
+                   '\x01[1': "/buffer *1",
+                   '\x01[2': "/buffer *2",
+                   '\x01[3': "/buffer *3",
+                   '\x01[4': "/buffer *4",
+                   '\x01[5': "/buffer *5",
+                   '\x01[6': "/buffer *6",
+                   '\x01[7': "/buffer *7",
+                   '\x01[8': "/buffer *8",
+                   '\x01[9': "/buffer *9",
+                   '\x01[0': "/buffer *10",
+                   '\x01^': "/input jump_last_buffer_displayed",
+                   '\x01D': "/window page_down",
+                   '\x01U': "/window page_up",
+                   '\x01Wh': "/window left",
+                   '\x01Wj': "/window down",
+                   '\x01Wk': "/window up",
+                   '\x01Wl': "/window right",
+                   '\x01W=': "/window balance",
+                   '\x01Wx': "/window swap",
+                   '\x01Ws': "/window splith",
+                   '\x01Wv': "/window splitv",
+                   '\x01Wq': "/window merge",
+                   ';': key_semicolon,
+                   ',': key_comma,
+                   'u': key_u,
+                   '\x01R': key_ctrl_r}
 
 # Add alt-j<number> bindings.
 for i in range(10, 99):
-    VI_KEYS['\x01[j%s' % i] = "/buffer %s" % i
+    VI_DEFAULT_KEYS['\x01[j%s' % i] = "/buffer %s" % i
+
+# VI_DEFAULT_KEYS are kept in a separate data structure to ensure
+# that they can not be permenantly deleted by the `:nunmap` command.
+VI_KEYS = VI_DEFAULT_KEYS.copy()
+
+class UMParser(metaclass=ABCMeta):
+    """User Mapping Parser
+
+    Handles parsing for UserMapping class.
+    """
+    @abstractproperty
+    def count(self):
+        """Required Attribute"""
+
+    def parse(self, vi_keys):
+        """Vi_Keys parser that generates callable actions.
+
+        Yields:
+            Callable object: action(buf, input_line, cur, count)
+        """
+        old_style_cmd_conditions = [
+            vi_keys[0] == '/',
+            re.search('<cr>', vi_keys.lower()) is None,
+        ]
+
+        # >>> OLD-STYLE USER MAPPING
+        if all(old_style_cmd_conditions):
+            yield functools.partial(do_command, vi_keys)
+        # >>> NEW-STYLE USER MAPPING
+        else:
+            for action in self.new_style(vi_keys):
+                yield action
+
+    def new_style(self, vi_keys):
+        """Parse New-Style User Mapping
+
+        Yields:
+            Callable object: action(buf, input_line, cur, count)
+        """
+        index = 0
+        while index < len(vi_keys):
+            # >>> COUNT
+            match = re.match('^[1-9][0-9]*', vi_keys[index:])
+            if match:
+                end = match.end() + index
+                self.count += int(vi_keys[index:end])
+                index += match.end()
+
+            # >>> ACTION SPECIFIER
+            action, i = self.action_spec(vi_keys[index:])
+            index += i
+            if action is None:
+                continue
+            else:
+                yield action
+
+    def action_spec(self, vi_keys):
+        """Parse Action Specifier
+
+        Returns:
+            2-tuple: (Callable_Action, Index_Where_Parsing_Stoped)
+        """
+        # >>> INSERT MODE SEQUENCE
+        if mode == 'INSERT':
+            match = re.search('<(cr|esc)>', vi_keys.lower())
+            enter = False
+
+            if match:
+                set_mode('NORMAL')
+                index = match.end()
+                if match.group() == '<cr>':
+                    enter = True
+            else:
+                index = start = len(vi_keys)
+
+            start = match.start() if match else len(vi_keys)
+            return self.imode_capture(vi_keys[:start], enter=enter), index
+
+        # >>> VI_KEY
+        for keys, command in VI_KEYS.items():
+            if vi_keys.startswith(keys):
+                if isinstance(command, str):
+                    return functools.partial(do_command, command), len(keys)
+                else:
+                    return command, len(keys)
+
+        # >>> VI_MOTION
+        for motion in VI_MOTIONS:
+            if vi_keys.startswith(motion):
+                return functools.partial(do_motion, motion), len(motion)
+
+        # >>> VI_OPERATOR
+        if len(vi_keys) > 1 and vi_keys[0] in VI_OPERATORS:
+            for motion in VI_MOTIONS:
+                if vi_keys[1:].startswith(motion):
+                    action = functools.partial(do_operator,
+                                               vi_keys[:len(motion) + 1])
+                    return action, len(motion) + 1
+
+        # >>> WEECHAT COMMAND
+        match = re.search('^[:/](.*?)<(CR|cr)>', vi_keys)
+        if match:
+            end = match.end()
+            group = match.groups()[0]
+            cmd_list = group.split(maxsplit=1)
+            cmd = cmd_list[0]
+            args = cmd_list[1] if len(cmd_list) == 2 else ''
+
+            if re.match('b[1-9][0-9]*', cmd):
+                args = '{} {}'.format(cmd[1:], args)
+                cmd = cmd[0]
+
+            if cmd in VI_COMMANDS:
+                if isinstance(VI_COMMANDS[cmd], str):
+                    full_cmd = '{} {}'.format(VI_COMMANDS[cmd], args)
+                    action = functools.partial(do_command, full_cmd)
+                else:
+                    action = self.vi_cmd_action(cmd, args)
+            else:
+                action = functools.partial(do_command,
+                                           '/{}'.format(vi_keys[1:end - 4]))
+            return action, end
+
+        # >>> PARSING ERROR
+        if vi_keys[0] in (':', '/'):
+            self.bad_sequence += vi_keys
+            return None, len(vi_keys)
+        else:
+            self.bad_sequence += vi_keys[0]
+            return None, 1
+
+    def vi_cmd_action(self, cmd, args):
+        """Factory for VI_COMMAND Action"""
+        def action(buf, input_line, cur, count):
+            VI_COMMANDS[cmd](args)
+        return action
+
+    def imode_capture(self, new_input, *, enter=False):
+        """Factory for Action that Captures Input and Sends it to Command-Line
+
+        This is expected when the mappings previous actions have set
+        INSERT mode.
+        """
+        def action(buf, input_line, cur, count):
+            for _ in range(max(int(count), 1)):
+                p = int(cur)
+                final_input = '{}{}{}'.format(input_line[:p],
+                                              new_input,
+                                              input_line[p:])
+                weechat.buffer_set(buf, "input", final_input)
+                new_pos = str(len(new_input) + p)
+                weechat.buffer_set(buf, "input_pos", new_pos)
+
+                input_line = weechat.buffer_get_string(buf, "input")
+                cur = weechat.buffer_get_integer(buf, "input_pos")
+                if enter:
+                    do_command('/input return', buf, input_line, cur, 0)
+        return action
+
+class UserMapping(UMParser):
+    """Wraps User Mapping Defined by :nmap Command"""
+    count = 0
+    locked = False
+
+    def __init__(self, lhs, rhs):
+        self.lhs = lhs
+        self.rhs = rhs
+
+    def __call__(self, buf, input_line, cur, count):
+        if self.locked:
+            error_fmt = ("Somthing's not right. The following user mapping "
+                         "is recursing on itself: (\"{}\", \"{}\").")
+            print_warning(error_fmt.format(self.lhs, self.rhs))
+            return
+
+        rhs, count = self.process_count(count)
+        self.bad_sequence = ""
+        with self.lock():
+            for _ in range(count):
+                bad_seq_list = []
+                for action in self.parse(rhs):
+                    if self.bad_sequence:
+                        bad_seq_list.append(self.bad_sequence)
+
+                    action(buf, input_line, cur, self.count)
+
+                    # Reset count unless last key triggers
+                    # INSERT mode ('i', 'a', 'I', 'A', ...).
+                    if mode != 'INSERT':
+                        self.count = 0
+
+                    self.bad_sequence = ""
+
+                    buf = weechat.current_buffer()
+                    input_line = weechat.buffer_get_string(buf, "input")
+                    cur = weechat.buffer_get_integer(buf, "input_pos")
+
+                self.count = 0
+                if self.bad_sequence:
+                    bad_seq_list.append(self.bad_sequence)
+                    self.bad_sequence = ""
+
+                self.report_errors(bad_seq_list)
+
+    @contextmanager
+    def lock(self):
+        """ Access Lock
+
+        Protects against infinite recursion which could be triggered by
+        defining a mapping in terms of itself, for example.
+        """
+        try:
+            self.locked = True
+            yield
+        finally:
+            self.locked = False
+
+    def process_count(self, count):
+        """Checks for a special count tag of the form #{N} where N is some integer.
+
+        If a count tag is found, consume the count by substituting it in place
+        of the tag.
+        """
+        if re.search('#{\d+}', self.rhs) is not None:
+            if count:
+                rhs = re.sub('#{\d+}', str(count), self.rhs)
+            else:
+                rhs = re.sub('#{(\d+)}', r'\1', self.rhs)
+            new_count = 1
+        else:
+            rhs = self.rhs
+            new_count = max(count, 1)
+        return rhs, new_count
+
+    def report_errors(self, bad_seq_list):
+        """Alert user about any parsing errors that occurred."""
+        for bad_seq in bad_seq_list:
+            error_msg = 'Failed to parse "{}" sequence ' \
+                'in the following user mapping: ' \
+                '("{}", "{}").'.format(bad_seq, self.lhs, self.rhs)
+            print_warning(error_msg)
 
 
 # Key handling.
@@ -1298,21 +1569,13 @@ def cb_key_combo_default(data, signal, signal_data):
         if vi_keys not in ['u', '\x01R']:
             add_undo_history(buf, input_line)
         if isinstance(VI_KEYS[vi_keys], str):
-            for _ in range(max(count, 1)):
-                weechat.command("", VI_KEYS[vi_keys])
-                current_cur = weechat.buffer_get_integer(buf, "input_pos")
-                set_cur(buf, input_line, current_cur)
+            do_command(VI_KEYS[vi_keys], buf, input_line, cur, count)
         else:
             VI_KEYS[vi_keys](buf, input_line, cur, count)
     # It's a motion (e.g. "w") — call `motion_X()` where X is the motion, then
     # set the cursor's position to what that function returned.
     elif vi_keys in VI_MOTIONS:
-        if vi_keys in SPECIAL_CHARS:
-            func = "motion_%s" % SPECIAL_CHARS[vi_keys]
-        else:
-            func = "motion_%s" % vi_keys
-        end, _, _ = globals()[func](input_line, cur, count)
-        set_cur(buf, input_line, end)
+        do_motion(vi_keys, buf, input_line, cur, count)
     # It's an operator + motion (e.g. "dw") — call `motion_X()` (where X is
     # the motion), then we call `operator_Y()` (where Y is the operator)
     # with the position `motion_X()` returned. `operator_Y()` should then
@@ -1320,19 +1583,7 @@ def cb_key_combo_default(data, signal, signal_data):
     elif (len(vi_keys) > 1 and
           vi_keys[0] in VI_OPERATORS and
           vi_keys[1:] in VI_MOTIONS):
-        add_undo_history(buf, input_line)
-        if vi_keys[1:] in SPECIAL_CHARS:
-            func = "motion_%s" % SPECIAL_CHARS[vi_keys[1:]]
-        else:
-            func = "motion_%s" % vi_keys[1:]
-        pos, overwrite, catching = globals()[func](input_line, cur, count)
-        # If it's a catching motion, we don't want to call the operator just
-        # yet -- this code will run again when the motion is complete, at which
-        # point we will.
-        if not catching:
-            oper = "operator_%s" % vi_keys[0]
-            globals()[oper](buf, input_line, cur, pos, overwrite)
-    # The combo isn't completed yet (e.g. just "d").
+        do_operator(vi_keys, buf, input_line, cur, count)
     else:
         return weechat.WEECHAT_RC_OK_EAT
 
@@ -1462,6 +1713,8 @@ def load_user_mappings():
     if vimode_settings['user_mappings']:
         mappings.update(json.loads(vimode_settings['user_mappings']))
     vimode_settings['user_mappings'] = mappings
+    for k, v in mappings.items():
+        VI_KEYS[k] = UserMapping(k, v)
 
 
 # Command-line execution.
@@ -1582,6 +1835,35 @@ def cb_vimode_cmd(data, buf, args):
 
 # Motions/keys helpers.
 # ---------------------
+def do_command(cmd, buf, input_line, cur, count):
+    """Execute WeeChat Command"""
+    for _ in range(max(count, 1)):
+        weechat.command("", cmd)
+        current_cur = weechat.buffer_get_integer(buf, "input_pos")
+        set_cur(buf, input_line, current_cur)
+
+def do_motion(keys, buf, input_line, cur, count):
+    """Perform Vim-like Motion"""
+    if keys in SPECIAL_CHARS:
+        func = "motion_%s" % SPECIAL_CHARS[keys]
+    else:
+        func = "motion_%s" % keys
+    end, _, _ = globals()[func](input_line, cur, count)
+    set_cur(buf, input_line, end)
+
+def do_operator(keys, buf, input_line, cur, count):
+    add_undo_history(buf, input_line)
+    if keys[1:] in SPECIAL_CHARS:
+        func = "motion_%s" % SPECIAL_CHARS[keys[1:]]
+    else:
+        func = "motion_%s" % keys[1:]
+    pos, overwrite, catching = globals()[func](input_line, cur, count)
+    # If it's a catching motion, we don't want to call the operator just
+    # yet -- this code will run again when the motion is complete, at which
+    # point we will.
+    if not catching:
+        oper = "operator_%s" % keys[0]
+        globals()[oper](buf, input_line, cur, pos, overwrite)
 
 def get_pos(data, regex, cur, ignore_cur=False, count=0):
     """Return the position of `regex` match in `data`, starting at `cur`.
@@ -1695,9 +1977,6 @@ def get_keys_and_count(combo):
                 break
         combo = combo.replace(count, "", 1)
         count = int(count)
-    # It's a user defined key. Expand it.
-    if combo in vimode_settings['user_mappings']:
-        combo = vimode_settings['user_mappings'][combo]
     # It's a WeeChat command.
     if not matched and combo.startswith("/"):
         matched = True
@@ -1746,7 +2025,6 @@ def get_keys_and_count(combo):
 
 # Other helpers.
 # --------------
-
 def set_mode(arg):
     """Set the current mode and update the bar mode indicator."""
     global mode

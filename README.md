@@ -191,7 +191,7 @@ Normal mode. When in search mode, pressing `/` will start a new search.
                     Close the current buffer (`/close`).
 * `:b#`             Go to the last buffer (`/input jump_last_buffer`).
 * `:b [N]`, `:bu [N]`, `:buf [N]`, `:buffer [N]`
-                    Go to buffer [N].
+                    Go to buffer `[N]`.
 * `:sp`, `:split`   Split current window in two (`/window splith`).
 * `:vs`, `:vsplit`  Split current window in two, but vertically
                     (`/window splitv`).
@@ -202,16 +202,11 @@ Normal mode. When in search mode, pressing `/` will start a new search.
 * `:<num>`          Start cursor mode and go to line.
 * `:nmap`           List user-defined key mappings.
 * `:nmap {lhs} {rhs}`
-                    Map {lhs} to {rhs} for Normal mode.
-                    Some (but not all) vim-like key codes are supported: <Up>,
-                    <Down>, <Left>, <Right>, <C-...> and <M-...>.
-                    User-defined mappings are not followed (e.g. doing `:nmap z
-                    j` followed by `:nmap u z` will result in `u` not doing
-                    anything, since `z` is a user-defined mapping).
-                    Default vimode bindings can be used (e.g. `:nmap J K`
-                    followed by `:nmap K J` will flip `J` and `K` without
-                    resulting in a loop).
-* `:nunmap {lhs}`   Remove the mapping of {lhs} for Normal mode.
+                    Map `{lhs}` to `{rhs}` for Normal mode.  Some (but not all) vim-like key codes are
+                    supported: `<Up>`, `<Down>`, `<Left>`, `<Right>`, `<C-...>` and `<M-...>`. These "user
+                    mappings" share much of the flexibility you are accustomed to from using regular
+                    vim mappings. See the [User Mappings](#usermaps) section for details and examples.
+* `:nunmap {lhs}`   Remove the mapping of `{lhs}` for Normal mode.
 * `:command`        All other commands will be passed to WeeChat (e.g.
                     ":script …" is equivalent to "/script …").
 
@@ -219,6 +214,48 @@ Normal mode. When in search mode, pressing `/` will start a new search.
 information). `&` in the replacement is also substituted by the pattern. If the
 `g` flag isn't present, only the first match will be substituted.
 
+# <a name="usermaps"></a>User Mappings
+User mappings are created using `:nmap {lhs} {rhs}`. The `{rhs}` argument consists of any
+combination of the following:
+
+* A WeeChat command, specified with: `/command [options]<CR>`. You may also use a colon (`:`)
+  in place of the forward slash (`/`) if you wish.
+* An INSERT mode action, specified by an `A`, `I`, `i`, or `a` to enter INSERT mode; then an
+  (optional) arbitrary string of characters to send to the command-line; and then (optionally) ending the
+  pattern with a `<CR>` (to submit the text to the current buffer) or a `<Esc>` to end the INSERT
+  mode action and go back to NORMAL mode.
+* Keys specifying a vim motion (`h`,`j`,`k`,`l`,`^`,`0`, etc.).
+* Keys specifying a vim operation (`dd`, `y$`, `cw`, etc.).
+
+A count may be specified either in the mapping itself or before triggering the mapping.
+Furthermore, you may place the following count tag anywhere (except inside an INSERT action) within
+the binding (`{rhs}`): `#{N}`, where `N` is some arbitrary integer. This special "count tag" is used to
+consume an external count. If no external count is provided, `N` will be used as the default
+count. This will all probably be easier to grasp after seeing a few examples:
+
+### Examples
+
+1) Commands can be concatenated together:
+     - INPUT: `:nmap h /cmd1<CR>/cmd2<CR>`
+     - OUTPUT [h]: Runs `/cmd1` then `/cmd2`.
+
+2) User defined bindings will be followed:
+     - INPUT: `:nmap j /buffer 5<CR>h`
+     - OUTPUT [j]: Go to the fifth buffer, then run `/cmd1`, and then run `/cmd2`.
+
+3) Bindings can take advantage of INSERT mode:
+     - INPUT: `:nmap k i/msg <Esc>0i`
+     - OUTPUT [k]: Prints "/msg " to the command-line and then returns the user to the beginning of the line. The user is left in INSERT mode.
+
+4) Counts are respected both internally and externally:
+     - INPUT: `:nmap j 3J`
+     - OUTPUT [j]: Go three buffers down.
+     - OUTPUT [3j]: Go nine buffers down.
+
+5) Special "count tag" gives you more flexibility when using external counts:
+     - INPUT: `:nmap @ /buffer #{3}<CR>`
+     - OUTPUT [7@]: Go to the seventh buffer.
+     - OUTPUT [@]: Go to the third buffer.
 
 # History:
 * version 0.1:      initial release
