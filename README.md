@@ -22,6 +22,10 @@ do the following instead:
     git clone 'https://github.com/GermainZ/weechat-vimode.git'
     ln -s /path/to/git/repo/vimode.py ~/.weechat/python/autoload/vimode.py
 
+If you're using Arch Linux, you can also install
+[weechat-vimode-git](https://aur.archlinux.org/packages/weechat-vimode-git/)
+from the AUR.
+
 
 # Screencast:
 [![weechat-vimode screencast (webm; 7.63M](https://ptpb.pw/be75e2b38eb743a29682ca60e6768ab8d0418250.png)](https://ptpb.pw/a826c31608ec80d0eed229b8747b2bdd27b92ca3.webm)
