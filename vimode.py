@@ -1078,11 +1078,13 @@ for i in range(10, 99):
 # that they can not be permenantly deleted by the `:nunmap` command.
 VI_KEYS = VI_DEFAULT_KEYS.copy()
 
-class UMParser(metaclass=ABCMeta):
+class UMParser:
     """User Mapping Parser
 
     Handles parsing for UserMapping class.
     """
+    __metaclass__ = ABCMeta
+
     @abstractproperty
     def count(self):
         """Required Attribute"""
@@ -1177,7 +1179,7 @@ class UMParser(metaclass=ABCMeta):
         if match:
             end = match.end()
             group = match.groups()[0]
-            cmd_list = group.split(maxsplit=1)
+            cmd_list = group.split(None, 1)
             cmd = cmd_list[0]
             args = cmd_list[1] if len(cmd_list) == 2 else ''
 
@@ -1210,7 +1212,7 @@ class UMParser(metaclass=ABCMeta):
             VI_COMMANDS[cmd](args)
         return action
 
-    def imode_capture(self, new_input, *, enter=False):
+    def imode_capture(self, new_input, enter=False):
         """Factory for Action that Captures Input and Sends it to Command-Line
 
         This is expected when the mappings previous actions have set
@@ -1296,11 +1298,11 @@ class UserMapping(UMParser):
         If a count tag is found, consume the count by substituting it in place
         of the tag.
         """
-        if re.search('#{\d+}', self.rhs) is not None:
+        if re.search(r'#{\d+}', self.rhs) is not None:
             if count:
-                rhs = re.sub('#{\d+}', str(count), self.rhs)
+                rhs = re.sub(r'#{\d+}', str(count), self.rhs)
             else:
-                rhs = re.sub('#{(\d+)}', r'\1', self.rhs)
+                rhs = re.sub(r'#{(\d+)}', r'\1', self.rhs)
             new_count = 1
         else:
             rhs = self.rhs
