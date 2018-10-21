@@ -2067,7 +2067,8 @@ def clear_undo_history(buf):
 
 def print_warning(text):
     """Print warning, in red, to the current buffer."""
-    weechat.prnt("", ("%s[vimode.py] %s" % (weechat.color("red"), text)))
+    buf = weechat.current_buffer()
+    weechat.prnt(buf, ("%s[vimode.py] %s" % (weechat.color("red"), text)))
 
 def check_warnings():
     """Warn the user about problematic key bindings and tmux/screen."""
