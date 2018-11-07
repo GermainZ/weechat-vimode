@@ -149,7 +149,6 @@ vimode_settings = {
 # ---------------
 
 WHITESPACE = re.compile(r"\s")
-REGEX_MOTION_LOWERCASE_W = re.compile(r"\b\S|(?<=\s)\S")
 REGEX_MOTION_UPPERCASE_W = re.compile(r"(?<=\s)\S")
 REGEX_MOTION_UPPERCASE_E = re.compile(r"\S(?!\S)")
 REGEX_MOTION_UPPERCASE_B = REGEX_MOTION_UPPERCASE_E
@@ -468,10 +467,30 @@ def motion_w(input_line, cur, count):
     See Also:
         `motion_base()`.
     """
-    pos = get_pos(input_line, REGEX_MOTION_LOWERCASE_W, cur, True, count)
-    if pos == -1:
-        return len(input_line), False, False
-    return cur + pos, False, False
+    is_keyword = re.compile(vimode_settings['is_keyword'])
+    for _ in range(max(1, count)):
+        found = False
+        pos = cur
+        for pos in range(cur + 1, len(input_line)):
+            # Whitespace, keep going.
+            if WHITESPACE.match(input_line[pos]):
+                pass
+            # Beginning of sequence made from 'iskeyword' characters only,
+            # or beginning of sequence made from non 'iskeyword' characters only.
+            elif ((is_keyword.match(input_line[pos]) and
+                   (not is_keyword.match(input_line[pos - 1]) or
+                    WHITESPACE.match(input_line[pos - 1]))) or
+                  (not is_keyword.match(input_line[pos]) and
+                   (is_keyword.match(input_line[pos - 1]) or
+                    WHITESPACE.match(input_line[pos - 1])))):
+                found = True
+                cur = pos
+                break
+        # We're at the character before the last and we still found nothing.
+        # Go to the last character.
+        if not found:
+            cur = pos + 1
+    return cur, False, False
 
 def motion_W(input_line, cur, count):
     """Go `count` WORDS forward and return position.
