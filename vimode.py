@@ -140,7 +140,8 @@ vimode_settings = {
                                        ("background color for mode indicator "
                                         "in Search mode")),
     'line_number_prefix': ("", "prefix for line numbers"),
-    'line_number_suffix': (" ", "suffix for line numbers")
+    'line_number_suffix': (" ", "suffix for line numbers"),
+    'is_keyword': ("[a-zA-Z0-9_À-ÿ]", "characters recognized as part of a word")
 }
 
 
@@ -148,7 +149,6 @@ vimode_settings = {
 # ---------------
 
 WHITESPACE = re.compile(r"\s")
-IS_KEYWORD = re.compile(r"[a-zA-Z0-9_@À-ÿ]")
 REGEX_MOTION_LOWERCASE_W = re.compile(r"\b\S|(?<=\s)\S")
 REGEX_MOTION_UPPERCASE_W = re.compile(r"(?<=\s)\S")
 REGEX_MOTION_UPPERCASE_E = re.compile(r"\S(?!\S)")
@@ -490,6 +490,7 @@ def motion_e(input_line, cur, count):
     See Also:
         `motion_base()`.
     """
+    is_keyword = re.compile(vimode_settings['is_keyword'])
     for _ in range(max(1, count)):
         found = False
         pos = cur
@@ -499,11 +500,11 @@ def motion_e(input_line, cur, count):
                 pass
             # End of sequence made from 'iskeyword' characters only,
             # or end of sequence made from non 'iskeyword' characters only.
-            elif ((IS_KEYWORD.match(input_line[pos]) and
-                   (not IS_KEYWORD.match(input_line[pos + 1]) or
+            elif ((is_keyword.match(input_line[pos]) and
+                   (not is_keyword.match(input_line[pos + 1]) or
                     WHITESPACE.match(input_line[pos + 1]))) or
-                  (not IS_KEYWORD.match(input_line[pos]) and
-                   (IS_KEYWORD.match(input_line[pos + 1]) or
+                  (not is_keyword.match(input_line[pos]) and
+                   (is_keyword.match(input_line[pos + 1]) or
                     WHITESPACE.match(input_line[pos + 1])))):
                 found = True
                 cur = pos
