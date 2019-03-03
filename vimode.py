@@ -443,6 +443,7 @@ def operator_c(buf, input_line, pos1, pos2, overwrite=False):
     """
     operator_d(buf, input_line, pos1, pos2, overwrite)
     set_mode("INSERT")
+    set_cur(buf, input_line, pos1)
 
 def operator_y(buf, input_line, pos1, pos2, _):
     """Yank text from `pos1` to `pos2` from the input line.
