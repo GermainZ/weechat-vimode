@@ -1694,8 +1694,9 @@ def cb_line_numbers(data, item, window):
     bar_height = weechat.window_get_integer(window, "win_chat_height")
     content = ""
     for i in range(1, bar_height + 1):
-        content += "{}{}{}\n".format(vimode_settings['line_number_prefix'], i,
-                                     vimode_settings['line_number_suffix'])
+        content += "{}{:2}{}\n".format(vimode_settings['line_number_prefix'],
+                                       i,
+                                       vimode_settings['line_number_suffix'])
     return content
 
 # Callbacks for the line numbers bar.
