@@ -140,7 +140,8 @@ vimode_settings = {
                                        ("background color for mode indicator "
                                         "in Search mode")),
     'line_number_prefix': ("", "prefix for line numbers"),
-    'line_number_suffix': (" ", "suffix for line numbers")
+    'line_number_suffix': (" ", "suffix for line numbers"),
+    'is_keyword': ("[a-zA-Z0-9_À-ÿ]", "characters recognized as part of a word")
 }
 
 
@@ -148,8 +149,6 @@ vimode_settings = {
 # ---------------
 
 WHITESPACE = re.compile(r"\s")
-IS_KEYWORD = re.compile(r"[a-zA-Z0-9_@À-ÿ]")
-REGEX_MOTION_LOWERCASE_W = re.compile(r"\b\S|(?<=\s)\S")
 REGEX_MOTION_UPPERCASE_W = re.compile(r"(?<=\s)\S")
 REGEX_MOTION_UPPERCASE_E = re.compile(r"\S(?!\S)")
 REGEX_MOTION_UPPERCASE_B = REGEX_MOTION_UPPERCASE_E
@@ -468,10 +467,30 @@ def motion_w(input_line, cur, count):
     See Also:
         `motion_base()`.
     """
-    pos = get_pos(input_line, REGEX_MOTION_LOWERCASE_W, cur, True, count)
-    if pos == -1:
-        return len(input_line), False, False
-    return cur + pos, False, False
+    is_keyword = re.compile(vimode_settings['is_keyword'])
+    for _ in range(max(1, count)):
+        found = False
+        pos = cur
+        for pos in range(cur + 1, len(input_line)):
+            # Whitespace, keep going.
+            if WHITESPACE.match(input_line[pos]):
+                pass
+            # Beginning of sequence made from 'iskeyword' characters only,
+            # or beginning of sequence made from non 'iskeyword' characters only.
+            elif ((is_keyword.match(input_line[pos]) and
+                   (not is_keyword.match(input_line[pos - 1]) or
+                    WHITESPACE.match(input_line[pos - 1]))) or
+                  (not is_keyword.match(input_line[pos]) and
+                   (is_keyword.match(input_line[pos - 1]) or
+                    WHITESPACE.match(input_line[pos - 1])))):
+                found = True
+                cur = pos
+                break
+        # We're at the character before the last and we still found nothing.
+        # Go to the last character.
+        if not found:
+            cur = pos + 1
+    return cur, False, False
 
 def motion_W(input_line, cur, count):
     """Go `count` WORDS forward and return position.
@@ -490,6 +509,7 @@ def motion_e(input_line, cur, count):
     See Also:
         `motion_base()`.
     """
+    is_keyword = re.compile(vimode_settings['is_keyword'])
     for _ in range(max(1, count)):
         found = False
         pos = cur
@@ -499,11 +519,11 @@ def motion_e(input_line, cur, count):
                 pass
             # End of sequence made from 'iskeyword' characters only,
             # or end of sequence made from non 'iskeyword' characters only.
-            elif ((IS_KEYWORD.match(input_line[pos]) and
-                   (not IS_KEYWORD.match(input_line[pos + 1]) or
+            elif ((is_keyword.match(input_line[pos]) and
+                   (not is_keyword.match(input_line[pos + 1]) or
                     WHITESPACE.match(input_line[pos + 1]))) or
-                  (not IS_KEYWORD.match(input_line[pos]) and
-                   (IS_KEYWORD.match(input_line[pos + 1]) or
+                  (not is_keyword.match(input_line[pos]) and
+                   (is_keyword.match(input_line[pos + 1]) or
                     WHITESPACE.match(input_line[pos + 1])))):
                 found = True
                 cur = pos
@@ -1004,15 +1024,14 @@ def key_ctrl_r(buf, input_line, cur, count):
 
 # String values will be executed as normal WeeChat commands.
 # For functions, see `key_base()` for reference.
-VI_DEFAULT_KEYS = {'j': "/window scroll_down",
-                   'k': "/window scroll_up",
-                   'G': key_G,
+VI_DEFAULT_KEYS = {'G': key_G,
                    'gg': "/window scroll_top",
                    'x': "/input delete_next_char",
                    'X': "/input delete_previous_char",
                    'dd': "/input delete_line",
                    'D': "/input delete_end_of_line",
                    'cc': key_cc,
+                   'S': key_cc,
                    'C': key_C,
                    'i': key_i,
                    'a': key_a,
@@ -1056,8 +1075,14 @@ VI_DEFAULT_KEYS = {'j': "/window scroll_down",
                    '\x01[9': "/buffer *9",
                    '\x01[0': "/buffer *10",
                    '\x01^': "/input jump_last_buffer_displayed",
-                   '\x01D': "/window page_down",
-                   '\x01U': "/window page_up",
+                   '\x01F': "/window page_down",
+                   '\x01B': "/window page_up",
+                   '\x01D': "/window scroll_down",
+                   '\x01U': "/window scroll_up",
+                   '\x01E': "/window scroll +1",
+                   '\x01Y': "/window scroll -1",
+                   'j': "/window scroll +1",
+                   'k': "/window scroll -1",
                    '\x01Wh': "/window left",
                    '\x01Wj': "/window down",
                    '\x01Wk': "/window up",

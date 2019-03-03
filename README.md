@@ -155,19 +155,18 @@ Normal mode. When in search mode, pressing `/` will start a new search.
 * `nT`              Scroll nicklist down.
 
 ## Buffers:
-* `j`               Scroll buffer down. \*
-* `k`               Scroll buffer up. \*
-* `^U`              Scroll buffer page up. \*
-* `^D`              Scroll buffer page down. \*
+* `^B`              Scroll buffer page up. (use `weechat.look.scroll_page_percent` value)
+* `^F`              Scroll buffer page down. (use `weechat.look.scroll_page_percent` value)
+* `^U`              Scroll buffer up. (use `weechat.look.scroll_amount` value)
+* `^D`              Scroll buffer down. (use `weechat.look.scroll_amount` value)
+* `^Y` or `k`       Scroll buffer line up.
+* `^E` or `j`       Scroll buffer line down.
 * `gt` or `K` or `H`Go to the previous buffer.
 * `gT` or `J` or `L`Go to the next buffer.
 * `gg`              Goto first line.
-* `G`               Goto line **[count]**, default last line. \*
+* `G`               Goto line **[count]**, default last line.
 * `/`               Launch WeeChat search mode
 * `^^`              Jump to the last buffer.
-
-\* Counts may not work as intended, depending on the value of
-`weechat.look.scroll_amount` and `weechat.look.scroll_page_percent`.
 
 ## Windows:
 * `^Wh`             Go to the window to the left.
