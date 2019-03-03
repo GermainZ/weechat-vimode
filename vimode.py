@@ -467,7 +467,7 @@ def motion_w(input_line, cur, count):
     See Also:
         `motion_base()`.
     """
-    is_keyword = re.compile(vimode_settings['is_keyword'])
+    is_keyword = vimode_settings['is_keyword']
     for _ in range(max(1, count)):
         found = False
         pos = cur
@@ -509,7 +509,7 @@ def motion_e(input_line, cur, count):
     See Also:
         `motion_base()`.
     """
-    is_keyword = re.compile(vimode_settings['is_keyword'])
+    is_keyword = vimode_settings['is_keyword']
     for _ in range(max(1, count)):
         found = False
         pos = cur
@@ -1715,6 +1715,9 @@ def cb_config(data, option, value):
         load_user_mappings()
     if "_color" in option_name:
         load_mode_colors()
+    if option_name == 'is_keyword':
+        vimode_settings['is_keyword'] = re.compile(
+            vimode_settings['is_keyword'])
     return weechat.WEECHAT_RC_OK
 
 def load_mode_colors():
@@ -2158,6 +2161,7 @@ if __name__ == "__main__":
                                                                  value[0]))
     load_user_mappings()
     load_mode_colors()
+    vimode_settings['is_keyword'] = re.compile(vimode_settings['is_keyword'])
     # Warn the user about possible problems if necessary.
     if not weechat.config_string_to_boolean(vimode_settings['no_warn']):
         check_warnings()
