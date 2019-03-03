@@ -161,8 +161,8 @@ Normal mode. When in search mode, pressing `/` will start a new search.
 * `^D`              Scroll buffer down. (use `weechat.look.scroll_amount` value)
 * `^Y` or `k`       Scroll buffer line up.
 * `^E` or `j`       Scroll buffer line down.
-* `gt` or `K`       Go to the previous buffer.
-* `gT` or `J`       Go to the next buffer.
+* `gt` or `K` or `H`Go to the previous buffer.
+* `gT` or `J` or `L`Go to the next buffer.
 * `gg`              Goto first line.
 * `G`               Goto line **[count]**, default last line.
 * `/`               Launch WeeChat search mode
