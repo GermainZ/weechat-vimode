@@ -1611,10 +1611,12 @@ def cb_key_combo_default(data, signal, signal_data):
             do_command(VI_KEYS[vi_keys], buf, input_line, cur, count)
         else:
             VI_KEYS[vi_keys](buf, input_line, cur, count)
+        vi_buffer = ""
     # It's a motion (e.g. "w") — call `motion_X()` where X is the motion, then
     # set the cursor's position to what that function returned.
     elif vi_keys in VI_MOTIONS:
         do_motion(vi_keys, buf, input_line, cur, count)
+        vi_buffer = ""
     # It's an operator + motion (e.g. "dw") — call `motion_X()` (where X is
     # the motion), then we call `operator_Y()` (where Y is the operator)
     # with the position `motion_X()` returned. `operator_Y()` should then
@@ -1623,6 +1625,7 @@ def cb_key_combo_default(data, signal, signal_data):
           vi_keys[0] in VI_OPERATORS and
           vi_keys[1:] in VI_MOTIONS):
         do_operator(vi_keys, buf, input_line, cur, count)
+        vi_buffer = ""
     else:
         return weechat.WEECHAT_RC_OK_EAT
 
