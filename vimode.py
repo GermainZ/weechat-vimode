@@ -166,7 +166,9 @@ REGEX_MAP_KEYS_1 = {
     re.compile("<Down>", re.IGNORECASE): '\x01[[B'
 }
 REGEX_MAP_KEYS_2 = {
-    re.compile(r"<C-([^>]*)>", re.IGNORECASE): '\x01\\1',
+    # Python's regex doesn't support \U1, but we're using a simple hack when
+    # replacing to fix this.
+    re.compile(r"<C-([^>]*)>", re.IGNORECASE): '\x01\\U1',
     re.compile(r"<M-([^>]*)>", re.IGNORECASE): '\x01[\\1'
 }
 
@@ -234,7 +236,11 @@ def cmd_nmap(args):
             mapping = regex.sub(repl, mapping)
         # Second pass of replacements.
         for regex, repl in REGEX_MAP_KEYS_2.items():
-            key = regex.sub(repl, key)
+            if '\\U' in repl:  # Hack, but works well for our simple case.
+                repl = repl.replace('\\U', '\\')
+                key = regex.sub(lambda pat: pat.expand(repl).upper(), key)
+            else:
+                key = regex.sub(repl, key)
             mapping = regex.sub(repl, mapping)
         mappings = vimode_settings['user_mappings']
         mappings[key] = mapping
@@ -255,7 +261,11 @@ def cmd_nunmap(args):
         for regex, repl in REGEX_MAP_KEYS_1.items():
             key = regex.sub(repl, key)
         for regex, repl in REGEX_MAP_KEYS_2.items():
-            key = regex.sub(repl, key)
+            if '\\U' in repl:  # Hack, but works well for our simple case.
+                repl = repl.replace('\\U', '\\')
+                key = regex.sub(lambda pat: pat.expand(repl).upper(), key)
+            else:
+                key = regex.sub(repl, key)
         mappings = vimode_settings['user_mappings']
         if key in mappings:
             del mappings[key]
