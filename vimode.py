@@ -828,7 +828,7 @@ def cb_key_p(data, command, return_code, output, err):
         buf += output.strip()
     if return_code == 0:
         my_input = weechat.buffer_get_string(this_buffer, "input")
-        pos = weechat.buffer_get_integer(this_buffer, "input_pos")
+        pos = weechat.buffer_get_integer(this_buffer, "input_pos") + 1
         my_input = my_input[:pos] + buf + my_input[pos:]
         pos += len(buf)
         weechat.buffer_set(this_buffer, "input", my_input)
