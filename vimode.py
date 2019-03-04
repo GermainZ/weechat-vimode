@@ -367,8 +367,10 @@ def motion_base(input_line, cur, count):
         count (int): the amount of times to multiply or iterate the action.
 
     Returns:
-        A tuple containing three values:
-            int: the new position of the cursor.
+        A tuple containing four values:
+            int: the starting position of the selection. Usually the cursor's
+                position.
+            int: the ending position of the motion.
             bool: True if the motion is inclusive, False otherwise.
             bool: True if the motion is catching, False otherwise.
                 See `start_catching_keys()` for more info on catching motions.
@@ -386,7 +388,7 @@ def motion_base(input_line, cur, count):
     pos = get_pos(input_line, REGEX_INT, cur, True, count)
     # Return the new (absolute) cursor position.
     # This motion is exclusive, so overwrite is False.
-    return cur + pos, False
+    return cur, cur + pos, False, False
 
 def key_base(buf, input_line, cur, count):
     """Key method example.
@@ -430,7 +432,7 @@ def operator_d(buf, input_line, pos1, pos2, overwrite=False):
     del input_line[start:end]
     input_line = "".join(input_line)
     weechat.buffer_set(buf, "input", input_line)
-    set_cur(buf, input_line, pos1)
+    set_cur(buf, input_line, pos2)
 
 def operator_c(buf, input_line, pos1, pos2, overwrite=False):
     """Delete text from `pos1` to `pos2` from the input and enter Insert mode.
@@ -470,7 +472,7 @@ def motion_0(input_line, cur, count):
     See Also;
         `motion_base()`.
     """
-    return 0, False, False
+    return cur, 0, False, False
 
 def motion_w(input_line, cur, count):
     """Go `count` words forward and return position.
@@ -495,13 +497,12 @@ def motion_w(input_line, cur, count):
                    (is_keyword.match(input_line[pos - 1]) or
                     WHITESPACE.match(input_line[pos - 1])))):
                 found = True
-                cur = pos
                 break
         # We're at the character before the last and we still found nothing.
         # Go to the last character.
         if not found:
-            cur = pos + 1
-    return cur, False, False
+            pos += 1
+    return cur, pos, False, False
 
 def motion_W(input_line, cur, count):
     """Go `count` WORDS forward and return position.
@@ -511,8 +512,8 @@ def motion_W(input_line, cur, count):
     """
     pos = get_pos(input_line, REGEX_MOTION_UPPERCASE_W, cur, True, count)
     if pos == -1:
-        return len(input_line), False, False
-    return cur + pos, False, False
+        return cur, len(input_line), False, False
+    return cur, cur + pos, False, False
 
 def motion_e(input_line, cur, count):
     """Go to the end of `count` words and return position.
@@ -537,13 +538,12 @@ def motion_e(input_line, cur, count):
                    (is_keyword.match(input_line[pos + 1]) or
                     WHITESPACE.match(input_line[pos + 1])))):
                 found = True
-                cur = pos
                 break
         # We're at the character before the last and we still found nothing.
         # Go to the last character.
         if not found:
-            cur = pos + 1
-    return cur, True, False
+            pos += 1
+    return cur, pos, True, False
 
 def motion_E(input_line, cur, count):
     """Go to the end of `count` WORDS and return cusor position.
@@ -553,8 +553,8 @@ def motion_E(input_line, cur, count):
     """
     pos = get_pos(input_line, REGEX_MOTION_UPPERCASE_E, cur, True, count)
     if pos == -1:
-        return len(input_line), False, False
-    return cur + pos, True, False
+        return cur, len(input_line), False, False
+    return cur, cur + pos, True, False
 
 def motion_b(input_line, cur, count):
     """Go `count` words backwards and return position.
@@ -563,9 +563,9 @@ def motion_b(input_line, cur, count):
         `motion_base()`.
     """
     # "b" is just "e" on inverted data (e.g. "olleH" instead of "Hello").
-    pos_inv = motion_e(input_line[::-1], len(input_line) - cur - 1, count)[0]
+    pos_inv = motion_e(input_line[::-1], len(input_line) - cur - 1, count)[1]
     pos = len(input_line) - pos_inv - 1
-    return pos, True, False
+    return cur, pos, True, False
 
 def motion_B(input_line, cur, count):
     """Go `count` WORDS backwards and return position.
@@ -577,9 +577,9 @@ def motion_B(input_line, cur, count):
     pos = get_pos(input_line[::-1], REGEX_MOTION_UPPERCASE_B, new_cur,
                   count=count)
     if pos == -1:
-        return 0, False, False
+        return cur, 0, False, False
     pos = len(input_line) - (pos + new_cur + 1)
-    return pos, True, False
+    return cur, pos, True, False
 
 def motion_ge(input_line, cur, count):
     """Go to end of `count` words backwards and return position.
@@ -588,9 +588,9 @@ def motion_ge(input_line, cur, count):
         `motion_base()`.
     """
     # "ge is just "w" on inverted data (e.g. "olleH" instead of "Hello").
-    pos_inv = motion_w(input_line[::-1], len(input_line) - cur - 1, count)[0]
+    pos_inv = motion_w(input_line[::-1], len(input_line) - cur - 1, count)[1]
     pos = len(input_line) - pos_inv - 1
-    return pos, True, False
+    return cur, pos, True, False
 
 def motion_gE(input_line, cur, count):
     """Go to end of `count` WORDS backwards and return position.
@@ -602,9 +602,9 @@ def motion_gE(input_line, cur, count):
     pos = get_pos(input_line[::-1], REGEX_MOTION_G_UPPERCASE_E, new_cur,
                   True, count)
     if pos == -1:
-        return 0, False, False
+        return cur, 0, False, False
     pos = len(input_line) - (pos + new_cur + 1)
-    return pos, True, False
+    return cur, pos, True, False
 
 def motion_h(input_line, cur, count):
     """Go `count` characters to the left and return position.
@@ -612,7 +612,7 @@ def motion_h(input_line, cur, count):
     See Also:
         `motion_base()`.
     """
-    return max(0, cur - max(count, 1)), False, False
+    return cur, max(0, cur - max(count, 1)), False, False
 
 def motion_l(input_line, cur, count):
     """Go `count` characters to the right and return position.
@@ -620,7 +620,7 @@ def motion_l(input_line, cur, count):
     See Also:
         `motion_base()`.
     """
-    return cur + max(count, 1), False, False
+    return cur, cur + max(count, 1), False, False
 
 def motion_carret(input_line, cur, count):
     """Go to first non-blank character of line and return position.
@@ -629,7 +629,7 @@ def motion_carret(input_line, cur, count):
         `motion_base()`.
     """
     pos = get_pos(input_line, REGEX_MOTION_CARRET, 0)
-    return pos, False, False
+    return cur, pos, False, False
 
 def motion_dollar(input_line, cur, count):
     """Go to end of line and return position.
@@ -638,7 +638,7 @@ def motion_dollar(input_line, cur, count):
         `motion_base()`.
     """
     pos = len(input_line)
-    return pos, False, False
+    return cur, pos, False, False
 
 def motion_f(input_line, cur, count):
     """Go to `count`'th occurence of character and return position.
@@ -868,7 +868,7 @@ def key_I(buf, input_line, cur, count):
     See Also:
         `key_base()`.
     """
-    pos, _, _ = motion_carret(input_line, cur, 0)
+    _, pos, _, _ = motion_carret(input_line, cur, 0)
     set_cur(buf, input_line, pos)
     set_mode("INSERT")
 
@@ -1895,7 +1895,7 @@ def do_motion(keys, buf, input_line, cur, count):
         func = "motion_%s" % SPECIAL_CHARS[keys]
     else:
         func = "motion_%s" % keys
-    end, _, _ = globals()[func](input_line, cur, count)
+    _, end, _, _ = globals()[func](input_line, cur, count)
     set_cur(buf, input_line, end)
 
 def do_operator(keys, buf, input_line, cur, count):
@@ -1904,17 +1904,17 @@ def do_operator(keys, buf, input_line, cur, count):
         func = "motion_%s" % SPECIAL_CHARS[keys[1:]]
     else:
         func = "motion_%s" % keys[1:]
-    pos, overwrite, catching = globals()[func](input_line, cur, count)
+    pos1, pos2, overwrite, catching = globals()[func](input_line, cur, count)
     # See vim's "Special case" in :help cw
     is_keyword = vimode_settings['is_keyword']
     if keys in ["cw", "cW"] and is_keyword.match(input_line[cur]):
-        pos -= 1
+        pos2 -= 1
     # If it's a catching motion, we don't want to call the operator just
     # yet -- this code will run again when the motion is complete, at which
     # point we will.
     if not catching:
         oper = "operator_%s" % keys[0]
-        globals()[oper](buf, input_line, cur, pos, overwrite)
+        globals()[oper](buf, input_line, pos1, pos2, overwrite)
 
 def get_pos(data, regex, cur, ignore_cur=False, count=0):
     """Return the position of `regex` match in `data`, starting at `cur`.
@@ -1988,7 +1988,7 @@ def start_catching_keys(amount, callback, input_line, cur, count, buf=None):
     if "new_cur" in catching_keys_data:
         new_cur = catching_keys_data['new_cur']
         catching_keys_data = {'amount': 0}
-        return new_cur, True, False
+        return cur, new_cur, True, False
     catching_keys_data = ({'amount': amount,
                            'callback': callback,
                            'input_line': input_line,
@@ -1997,7 +1997,7 @@ def start_catching_keys(amount, callback, input_line, cur, count, buf=None):
                            'count': count,
                            'new_cur': 0,
                            'buf': buf})
-    return cur, False, True
+    return cur, cur, False, True
 
 def get_keys_and_count(combo):
     """Check if `combo` is a valid combo and extract keys/counts if so.
