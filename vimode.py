@@ -1905,6 +1905,10 @@ def do_operator(keys, buf, input_line, cur, count):
     else:
         func = "motion_%s" % keys[1:]
     pos, overwrite, catching = globals()[func](input_line, cur, count)
+    # See vim's "Special case" in :help cw
+    is_keyword = vimode_settings['is_keyword']
+    if keys in ["cw", "cW"] and is_keyword.match(input_line[cur]):
+        pos -= 1
     # If it's a catching motion, we don't want to call the operator just
     # yet -- this code will run again when the motion is complete, at which
     # point we will.
