@@ -141,7 +141,7 @@ vimode_settings = {
                                         "in Search mode")),
     'line_number_prefix': ("", "prefix for line numbers"),
     'line_number_suffix': (" ", "suffix for line numbers"),
-    'is_keyword': ("[a-zA-Z0-9_À-ÿ]", "characters recognized as part of a word")
+    'is_keyword': ("a-zA-Z0-9_À-ÿ", "characters recognized as part of a word")
 }
 
 
@@ -528,7 +528,7 @@ def motion_b(input_line, cur, count):
     # "b" is just "e" on inverted data (e.g. "olleH" instead of "Hello").
     pos_inv = motion_e(input_line[::-1], len(input_line) - cur - 1, count)[1]
     pos = len(input_line) - pos_inv - 1
-    return cur, pos, True, False
+    return cur, max(0, pos), True, False
 
 def motion_B(input_line, cur, count):
     """Go `count` WORDS backwards and return position.
@@ -609,12 +609,12 @@ def motion_iw(input_line, cur, count):
     See Also:
         `motion_base()`.
     """
-    pos_inv = get_pos(input_line[::-1], keyword_regexes['iw_1'],
+    pos_inv = get_pos(input_line[::-1], keyword_regexes['iw'],
                       len(input_line) - cur - 1, False, 1)
     start_pos = cur - pos_inv
-    end_pos = get_pos(input_line, keyword_regexes['iw_2'],
-                      start_pos, False, count)
-    return start_pos, start_pos + end_pos, True, False
+    end_pos = start_pos + get_pos(input_line, keyword_regexes['iw'],
+                                  start_pos, False, count)
+    return start_pos, end_pos, True, False
 
 def motion_f(input_line, cur, count):
     """Go to `count`'th occurence of character and return position.
@@ -1738,12 +1738,12 @@ def load_user_mappings():
 def load_is_keyword_regexes():
     is_keyword = vimode_settings['is_keyword']
     vimode_settings['is_keyword'] = re.compile(is_keyword)
-    keyword_regexes['w'] = re.compile(r"\b{0}|(?<=\s){0}".format(is_keyword))
-    keyword_regexes['e'] = re.compile(r"{0}\b|{0}(?=\s)".format(is_keyword))
-    keyword_regexes['iw_1'] = re.compile(r"{0}\b|{0}(?=\s)|\s\b".format(
-        is_keyword))
-    keyword_regexes['iw_2'] = re.compile(r"{0}\b|{0}(?=\s)|\s(?={0})".format(
-        is_keyword))
+    keyword_regexes['w'] = re.compile(
+        r"(?<=[^{0}])[{0}]|(?<![^{0}\s])[^{0}\s]".format(is_keyword))
+    keyword_regexes['e'] = re.compile(
+        r"[{0}](?=[^{0}])|[^{0}\s](?![^{0}\s])".format(is_keyword))
+    keyword_regexes['iw'] = re.compile(
+        r"[{0}](?=[^{0}])|[^{0}\s](?![^{0}\s])|\s(?!\s)|.$".format(is_keyword))
 
 # Command-line execution.
 # -----------------------
