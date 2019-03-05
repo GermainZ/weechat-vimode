@@ -155,6 +155,7 @@ REGEX_MOTION_UPPERCASE_B = REGEX_MOTION_UPPERCASE_E
 REGEX_MOTION_G_UPPERCASE_E = REGEX_MOTION_UPPERCASE_W
 REGEX_MOTION_CARRET = re.compile(r"\S")
 REGEX_INT = r"[0-9]"
+keyword_regexes = {}  # Loaded on runtime (uses the is_keyword config option).
 REGEX_MAP_KEYS_1 = {
     re.compile("<([^>]*-)Left>", re.IGNORECASE): '<\\1\x01[[D>',
     re.compile("<([^>]*-)Right>", re.IGNORECASE): '<\\1\x01[[C>',
@@ -480,29 +481,10 @@ def motion_w(input_line, cur, count):
     See Also:
         `motion_base()`.
     """
-    is_keyword = vimode_settings['is_keyword']
-    for _ in range(max(1, count)):
-        found = False
-        pos = cur
-        for pos in range(cur + 1, len(input_line)):
-            # Whitespace, keep going.
-            if WHITESPACE.match(input_line[pos]):
-                pass
-            # Beginning of sequence made from 'iskeyword' characters only,
-            # or beginning of sequence made from non 'iskeyword' characters only.
-            elif ((is_keyword.match(input_line[pos]) and
-                   (not is_keyword.match(input_line[pos - 1]) or
-                    WHITESPACE.match(input_line[pos - 1]))) or
-                  (not is_keyword.match(input_line[pos]) and
-                   (is_keyword.match(input_line[pos - 1]) or
-                    WHITESPACE.match(input_line[pos - 1])))):
-                found = True
-                break
-        # We're at the character before the last and we still found nothing.
-        # Go to the last character.
-        if not found:
-            pos += 1
-    return cur, pos, False, False
+    pos = get_pos(input_line, keyword_regexes['w'], cur, True, count)
+    if pos == -1:
+        return cur, len(input_line), False, False
+    return cur, cur + pos, False, False
 
 def motion_W(input_line, cur, count):
     """Go `count` WORDS forward and return position.
@@ -521,29 +503,10 @@ def motion_e(input_line, cur, count):
     See Also:
         `motion_base()`.
     """
-    is_keyword = vimode_settings['is_keyword']
-    for _ in range(max(1, count)):
-        found = False
-        pos = cur
-        for pos in range(cur + 1, len(input_line) - 1):
-            # Whitespace, keep going.
-            if WHITESPACE.match(input_line[pos]):
-                pass
-            # End of sequence made from 'iskeyword' characters only,
-            # or end of sequence made from non 'iskeyword' characters only.
-            elif ((is_keyword.match(input_line[pos]) and
-                   (not is_keyword.match(input_line[pos + 1]) or
-                    WHITESPACE.match(input_line[pos + 1]))) or
-                  (not is_keyword.match(input_line[pos]) and
-                   (is_keyword.match(input_line[pos + 1]) or
-                    WHITESPACE.match(input_line[pos + 1])))):
-                found = True
-                break
-        # We're at the character before the last and we still found nothing.
-        # Go to the last character.
-        if not found:
-            pos += 1
-    return cur, pos, True, False
+    pos = get_pos(input_line, keyword_regexes['e'], cur, True, count)
+    if pos == -1:
+        return cur, len(input_line), True, False
+    return cur, cur + pos, True, False
 
 def motion_E(input_line, cur, count):
     """Go to the end of `count` WORDS and return cusor position.
@@ -1728,8 +1691,7 @@ def cb_config(data, option, value):
     if "_color" in option_name:
         load_mode_colors()
     if option_name == 'is_keyword':
-        vimode_settings['is_keyword'] = re.compile(
-            vimode_settings['is_keyword'])
+        load_is_keyword_regexes()
     return weechat.WEECHAT_RC_OK
 
 def load_mode_colors():
@@ -1760,6 +1722,11 @@ def load_user_mappings():
     for k, v in mappings.items():
         VI_KEYS[k] = UserMapping(k, v)
 
+def load_is_keyword_regexes():
+    is_keyword = vimode_settings['is_keyword']
+    vimode_settings['is_keyword'] = re.compile(is_keyword)
+    keyword_regexes['w'] = re.compile(r"\b{0}|(?<=\s){0}".format(is_keyword))
+    keyword_regexes['e'] = re.compile(r"{0}\b|{0}(?=\s)".format(is_keyword))
 
 # Command-line execution.
 # -----------------------
@@ -2177,7 +2144,7 @@ if __name__ == "__main__":
                                                                  value[0]))
     load_user_mappings()
     load_mode_colors()
-    vimode_settings['is_keyword'] = re.compile(vimode_settings['is_keyword'])
+    load_is_keyword_regexes()
     # Warn the user about possible problems if necessary.
     if not weechat.config_string_to_boolean(vimode_settings['no_warn']):
         check_warnings()
