@@ -316,7 +316,7 @@ VI_OPERATORS = ["c", "d", "y"]
 # "motion_X" where X is the motion (e.g. `motion_w()`).
 # See Also: `SPECIAL_CHARS`.
 VI_MOTIONS = ["w", "e", "b", "^", "$", "h", "l", "W", "E", "B", "f", "F", "t",
-              "T", "ge", "gE", "0"]
+              "T", "ge", "gE", "0", "iw"]
 
 # Special characters for motions. The corresponding function's name is
 # converted before calling. For example, "^" will call `motion_carret` instead
@@ -602,6 +602,19 @@ def motion_dollar(input_line, cur, count):
     """
     pos = len(input_line)
     return cur, pos, False, False
+
+def motion_iw(input_line, cur, count):
+    """Select `count` inner words, returning starting/ending positions.
+
+    See Also:
+        `motion_base()`.
+    """
+    pos_inv = get_pos(input_line[::-1], keyword_regexes['iw_1'],
+                      len(input_line) - cur - 1, False, 1)
+    start_pos = cur - pos_inv
+    end_pos = get_pos(input_line, keyword_regexes['iw_2'],
+                      start_pos, False, count)
+    return start_pos, start_pos + end_pos, True, False
 
 def motion_f(input_line, cur, count):
     """Go to `count`'th occurence of character and return position.
@@ -1727,6 +1740,10 @@ def load_is_keyword_regexes():
     vimode_settings['is_keyword'] = re.compile(is_keyword)
     keyword_regexes['w'] = re.compile(r"\b{0}|(?<=\s){0}".format(is_keyword))
     keyword_regexes['e'] = re.compile(r"{0}\b|{0}(?=\s)".format(is_keyword))
+    keyword_regexes['iw_1'] = re.compile(r"{0}\b|{0}(?=\s)|\s\b".format(
+        is_keyword))
+    keyword_regexes['iw_2'] = re.compile(r"{0}\b|{0}(?=\s)|\s(?={0})".format(
+        is_keyword))
 
 # Command-line execution.
 # -----------------------
