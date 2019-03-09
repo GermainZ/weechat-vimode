@@ -111,6 +111,9 @@ vimode_settings = {
     'user_mappings': ("", ("see the `:nmap` command in the README for more "
                            "info; please do not modify this field manually "
                            "unless you know what you're doing")),
+    'user_mappings_noremap': ("", ("see the `:nnoremap` command in the README "
+                              "for more info; please do not modify this field "
+                              "manually unless you know what you're doing")),
     'mode_indicator_prefix': ("", "prefix for the bar item mode_indicator"),
     'mode_indicator_suffix': ("", "suffix for the bar item mode_indicator"),
     'mode_indicator_normal_color': ("white",
@@ -186,8 +189,11 @@ REGEX_PROBLEMATIC_KEYBINDINGS = re.compile(r"meta-\w(meta|ctrl)")
 # Vi commands.
 # ------------
 
-def cmd_nmap(args):
+def add_mapping(args, key):
     """Add a user-defined key mapping.
+
+    `key` refers to the WeeChat setting name ('user_mapping' for `:nmap`, or
+    'user_mapping_noremap' for `:nnoremap`).
 
     Some (but not all) vim-like key codes are supported to simplify things for
     the user: <Up>, <Down>, <Left>, <Right>, <C-...> and <M-...>.
@@ -197,9 +203,10 @@ def cmd_nmap(args):
     """
     args = args.lstrip()
     if not args:
-        mappings = vimode_settings['user_mappings']
+        mappings = vimode_settings[key]
         if mappings:
-            title = "----- Vimode User Mappings -----"
+            cmd = ':nnoremap' if key.endswith('noremap') else ':nmap'
+            title = "----- Vimode User Mappings ({}) -----".format(cmd)
             bar = '-' * len(title)
 
             weechat.prnt("", bar)
@@ -243,10 +250,18 @@ def cmd_nmap(args):
             else:
                 key = regex.sub(repl, key)
             mapping = regex.sub(repl, mapping)
-        mappings = vimode_settings['user_mappings']
+        mappings = vimode_settings[key]
         mappings[key] = mapping
-        weechat.config_set_plugin('user_mappings', json.dumps(mappings))
-        vimode_settings['user_mappings'] = mappings
+        weechat.config_set_plugin(key, json.dumps(mappings))
+        vimode_settings[key] = mappings
+
+def cmd_nmap(args):
+    """Add a user-defined key mapping."""
+    add_mapping(args, 'user_mappings')
+
+def cmd_nnoremap(args):
+    """Add a user-defined key mapping, without following user mappings."""
+    add_mapping(args, 'user_mappings_noremap')
 
 def cmd_nunmap(args):
     """Remove a user-defined key mapping.
@@ -267,18 +282,21 @@ def cmd_nunmap(args):
                 key = regex.sub(lambda pat: pat.expand(repl).upper(), key)
             else:
                 key = regex.sub(repl, key)
-        mappings = vimode_settings['user_mappings']
-        if key in mappings:
-            del mappings[key]
-            del VI_KEYS[key]
+        found = False
+        for setting in ['user_mappings', 'user_mappings_noremap']:
+            mappings = vimode_settings[setting]
+            if key in mappings:
+                found = True
+                del mappings[key]
+                del VI_KEYS[key]
 
-            # restore default keys
-            if key in VI_DEFAULT_KEYS:
-                VI_KEYS[key] = VI_DEFAULT_KEYS[key]
+                # restore default keys
+                if key in VI_DEFAULT_KEYS:
+                    VI_KEYS[key] = VI_DEFAULT_KEYS[key]
 
-            weechat.config_set_plugin('user_mappings', json.dumps(mappings))
-            vimode_settings['user_mappings'] = mappings
-        else:
+                weechat.config_set_plugin(setting, json.dumps(mappings))
+                vimode_settings[setting] = mappings
+        if not found:
             weechat.prnt("", "nunmap: No such mapping")
 
 # See Also: `cb_exec_cmd()`.
@@ -294,6 +312,7 @@ VI_COMMAND_GROUPS = {('h', 'help'): "/help",
                      ('sp', 'split'): "/window splith",
                      ('vs', 'vsplit'): "/window splitv",
                      ('nm', 'nmap'): cmd_nmap,
+                     ('nn', 'nnoremap'): cmd_nnoremap,
                      ('nun', 'nunmap'): cmd_nunmap}
 
 VI_COMMANDS = dict()
@@ -1103,6 +1122,10 @@ class UMParser:
     def count(self):
         """Required Attribute"""
 
+    @abstractproperty
+    def noremap(self):
+        """Required Attribute"""
+
     def parse(self, vi_keys):
         """Vi_Keys parser that generates callable actions.
 
@@ -1168,7 +1191,8 @@ class UMParser:
             return self.imode_capture(vi_keys[:start], enter=enter), index
 
         # >>> VI_KEY
-        for keys, command in VI_KEYS.items():
+        key_map = VI_DEFAULT_KEYS if self.noremap else VI_KEYS
+        for keys, command in key_map.items():
             if vi_keys.startswith(keys):
                 if isinstance(command, str):
                     return functools.partial(do_command, command), len(keys)
@@ -1252,10 +1276,12 @@ class UserMapping(UMParser):
     """Wraps User Mapping Defined by :nmap Command"""
     count = 0
     locked = False
+    noremap = False
 
-    def __init__(self, lhs, rhs):
+    def __init__(self, lhs, rhs, noremap=False):
         self.lhs = lhs
         self.rhs = rhs
+        self.noremap = noremap
 
     def __call__(self, buf, input_line, cur, count):
         if self.locked:
@@ -1703,7 +1729,7 @@ def cb_config(data, option, value):
     option_name = option.split(".")[-1]
     if option_name in vimode_settings:
         vimode_settings[option_name] = value
-    if option_name == 'user_mappings':
+    if option_name.startswith('user_mappings'):
         load_user_mappings()
     if "_color" in option_name:
         load_mode_colors()
@@ -1732,12 +1758,16 @@ def load_mode_colors():
 
 def load_user_mappings():
     """Load user-defined mappings."""
-    mappings = {}
-    if vimode_settings['user_mappings']:
-        mappings.update(json.loads(vimode_settings['user_mappings']))
-    vimode_settings['user_mappings'] = mappings
-    for k, v in mappings.items():
-        VI_KEYS[k] = UserMapping(k, v)
+    for key in ['user_mappings', 'user_mappings_noremap']:
+        noremap = key.endswith('noremap')
+        mappings = {}
+        if vimode_settings[key]:
+            if isinstance(vimode_settings[key], dict):
+                continue
+            mappings.update(json.loads(vimode_settings[key]))
+        vimode_settings[key] = mappings
+        for k, v in mappings.items():
+            VI_KEYS[k] = UserMapping(k, v, noremap=noremap)
 
 def load_is_keyword_regexes():
     is_keyword = vimode_settings['is_keyword']
