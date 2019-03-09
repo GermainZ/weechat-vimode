@@ -1450,18 +1450,6 @@ def cb_key_combo_default(data, signal, signal_data):
             return weechat.WEECHAT_RC_OK_EAT
         return weechat.WEECHAT_RC_OK
 
-    # We're catching keys! Only "normal" key presses interest us (e.g. "a"),
-    # not complex ones (e.g. backspace).
-    if len(keys) == 1 and catching_keys_data['amount']:
-        catching_keys_data['keys'] += keys
-        catching_keys_data['amount'] -= 1
-        # Done catching keys, execute the callback.
-        if catching_keys_data['amount'] == 0:
-            globals()[catching_keys_data['callback']]()
-            vi_buffer = ""
-            weechat.bar_item_update("vi_buffer")
-        return weechat.WEECHAT_RC_OK_EAT
-
     # We're in command-line mode.
     if mode == "COMMAND":
         buf = weechat.current_buffer()
@@ -1560,7 +1548,7 @@ def cb_key_combo_default(data, signal, signal_data):
     # `vi_keys` is checked for all the handling.
     # If no matches are found, the keys buffer is cleared.
     matched, vi_keys, count = get_keys_and_count(vi_buffer)
-    if not matched:
+    if not matched and not catching_keys_data['amount']:
         vi_buffer = ""
         return weechat.WEECHAT_RC_OK_EAT
     # Check if it's a command (user defined key mapped to a :cmd).
@@ -1578,6 +1566,14 @@ def cb_key_combo_default(data, signal, signal_data):
     buf = weechat.current_buffer()
     input_line = weechat.buffer_get_string(buf, "input")
     cur = weechat.buffer_get_integer(buf, "input_pos")
+
+    # Check if we should catch keys, but don't do anything yet (in case the
+    # user remapped this combo, and we shouldn't be calling the callback).
+    catching_keys = False
+    if catching_keys_data['amount']:
+        catching_keys = True
+        catching_keys_data['keys'] += keys
+        catching_keys_data['amount'] -= 1
 
     # It's a default mapping. If the corresponding value is a string, we assume
     # it's a WeeChat command. Otherwise, it's a method we'll call.
@@ -1600,11 +1596,19 @@ def cb_key_combo_default(data, signal, signal_data):
           vi_keys[0] in VI_OPERATORS and
           vi_keys[1:] in VI_MOTIONS):
         do_operator(vi_keys, buf, input_line, cur, count)
+    # Done catching keys, execute the callback.
+    elif catching_keys and catching_keys_data['amount'] == 0:
+        catching_keys_data['amount'] = -1
+        vi_buffer = vi_buffer[:-len(keys)]
+        globals()[catching_keys_data['callback']]()
+        vi_buffer = ""
+        weechat.bar_item_update("vi_buffer")
     else:
         return weechat.WEECHAT_RC_OK_EAT
 
     # We've already handled the key combo, so clear the keys buffer.
-    if not catching_keys_data['amount']:
+    if catching_keys_data['amount'] <= 0:
+        catching_keys_data['amount'] = 0
         vi_buffer = ""
         weechat.bar_item_update("vi_buffer")
     return weechat.WEECHAT_RC_OK_EAT
