@@ -104,6 +104,8 @@ vimode_settings = {
     'imap_esc': ("", ("use alternate mapping to enter Normal mode while in "
                       "Insert mode; having it set to 'jk' is similar to "
                       "`:imap jk <Esc>` in vim")),
+    'user_command_mapping': (":", ("user alternate mapping to enter Command mode while in "
+                                  "Normal mode")),
     'imap_esc_timeout': ("1000", ("time in ms to wait for the imap_esc "
                                   "sequence to complete")),
     'search_vim': ("off", ("allow n/N usage after searching (requires an extra"
@@ -1542,7 +1544,7 @@ def cb_key_combo_default(data, signal, signal_data):
         else:
             return weechat.WEECHAT_RC_OK
     # Enter command mode.
-    elif keys in [":", "/"]:
+    elif keys in [vimode_settings['user_command_mapping'], "/"]:
         if keys == "/":
             weechat.command("", "/input search_text_here")
             if not weechat.config_string_to_boolean(
