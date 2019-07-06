@@ -47,7 +47,7 @@ It is highly recommended you add **mode_indicator** and **vi_buffer** to your
 input bar. For example:
 
 * `/fset weechat.bar.input.items`
-* `<Alt+Enter>`
+* `<Alt+Enter>` or type `s` and press `Enter`
 * Add `mode_indicator+` at the start, and `,[vi_buffer]` at the end.
 * Final result example:
     `"mode_indicator+[input_prompt]+(away),[input_search],
@@ -56,7 +56,7 @@ input bar. For example:
 You can also add **cmd_completion** to the status bar:
 
 * `/fset weechat.bar.status.items`
-* `<Alt+Enter>`
+* `<Alt+Enter>` or type `s` and press `Enter`
 * Add `,cmd_completion` at the end.
 * Final result example:
     `""[time],[buffer_last_number],[buffer_plugin],buffer_number+:+buffer_name+(buffer_modes)+{buffer_nicklist_count}+buffer_zoom+buffer_filter,scroll,[lag],[hotlist],completion,cmd_completion"`
