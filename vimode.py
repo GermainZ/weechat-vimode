@@ -24,6 +24,7 @@
 from abc import ABCMeta, abstractproperty
 from contextlib import contextmanager
 import csv
+import enum
 import functools
 import json
 import os
@@ -185,15 +186,18 @@ REGEX_MAP_KEYS_2 = {
 #    becomes "ws" after removing the Esc part, and won't know how to handle it.
 REGEX_PROBLEMATIC_KEYBINDINGS = re.compile(r"meta-\w(meta|ctrl)")
 
+class Mapping(enum.Enum):
+    RECURSIVE = "user_mappings"
+    NON_RECURSIVE = "user_mappings_noremap"
 
 # Vi commands.
 # ------------
 
-def add_mapping(args, key):
+def add_mapping(args, which):
     """Add a user-defined key mapping.
 
-    `key` refers to the WeeChat setting name ('user_mapping' for `:nmap`, or
-    'user_mapping_noremap' for `:nnoremap`).
+    `which` is a Mapping type, either Mapping.RECURSIVE for `:nmap` or
+    Mapping.NON_RECURSIVE for `:nnoremap`).
 
     Some (but not all) vim-like key codes are supported to simplify things for
     the user: <Up>, <Down>, <Left>, <Right>, <C-...> and <M-...>.
@@ -203,9 +207,9 @@ def add_mapping(args, key):
     """
     args = args.lstrip()
     if not args:
-        mappings = vimode_settings[key]
+        mappings = vimode_settings[which.value]
         if mappings:
-            cmd = ':nnoremap' if key.endswith('noremap') else ':nmap'
+            cmd = ':nnoremap' if which == Mapping.NON_RECURSIVE else ':nmap'
             title = "----- Vimode User Mappings ({}) -----".format(cmd)
             bar = '-' * len(title)
 
@@ -250,18 +254,16 @@ def add_mapping(args, key):
             else:
                 key = regex.sub(repl, key)
             mapping = regex.sub(repl, mapping)
-        mappings = vimode_settings[key]
-        mappings[key] = mapping
-        weechat.config_set_plugin(key, json.dumps(mappings))
-        vimode_settings[key] = mappings
+        vimode_settings[which.value][key] = mapping
+        weechat.config_set_plugin(which.value, json.dumps(vimode_settings[which.value]))
 
 def cmd_nmap(args):
     """Add a user-defined key mapping."""
-    add_mapping(args, 'user_mappings')
+    add_mapping(args, Mapping.RECURSIVE)
 
 def cmd_nnoremap(args):
     """Add a user-defined key mapping, without following user mappings."""
-    add_mapping(args, 'user_mappings_noremap')
+    add_mapping(args, Mapping.NON_RECURSIVE)
 
 def cmd_nunmap(args):
     """Remove a user-defined key mapping.
