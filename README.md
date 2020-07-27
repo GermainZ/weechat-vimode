@@ -59,7 +59,7 @@ You can also add **cmd_completion** to the status bar:
 * `<Alt+Enter>` or type `s` and press `Enter`
 * Add `,cmd_completion` at the end.
 * Final result example:
-    `""[time],[buffer_last_number],[buffer_plugin],buffer_number+:+buffer_name+(buffer_modes)+{buffer_nicklist_count}+buffer_zoom+buffer_filter,scroll,[lag],[hotlist],completion,cmd_completion"`
+    `"[time],[buffer_last_number],[buffer_plugin],buffer_number+:+buffer_name+(buffer_modes)+{buffer_nicklist_count}+buffer_zoom+buffer_filter,scroll,[lag],[hotlist],completion,cmd_completion"`
 
 To switch back to Insert mode, you can use `i`, `a`, `A`, etc.
 
