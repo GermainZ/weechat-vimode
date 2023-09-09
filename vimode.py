@@ -252,7 +252,7 @@ def add_mapping(args, which):
         for regex, repl in REGEX_MAP_KEYS_2.items():
             if '\\U' in repl:  # Hack, but works well for our simple case.
                 repl = repl.replace('\\U', '\\')
-                key = regex.sub(lambda pat: pat.expand(repl).upper(), key)
+                key = regex.sub(lambda pat: pat.expand(repl).lower(), key)
             else:
                 key = regex.sub(repl, key)
             mapping = regex.sub(repl, mapping)
@@ -1070,7 +1070,7 @@ VI_DEFAULT_KEYS = {'G': key_G,
                    '\x01[[6~': "/window page_down",
                    '\x01[[3~': "/input delete_next_char",
                    '\x01[[2~': key_i,
-                   '\x01M': "/input return",
+                   '\x01m': "/input return",
                    '\x01?': "/input move_previous_char",
                    ' ': "/input move_next_char",
                    '\x01[j': key_alt_j,
@@ -1085,27 +1085,27 @@ VI_DEFAULT_KEYS = {'G': key_G,
                    '\x01[9': "/buffer *9",
                    '\x01[0': "/buffer *10",
                    '\x01^': "/input jump_last_buffer_displayed",
-                   '\x01F': "/window page_down",
-                   '\x01B': "/window page_up",
-                   '\x01D': "/window scroll_down",
-                   '\x01U': "/window scroll_up",
-                   '\x01E': "/window scroll +1",
-                   '\x01Y': "/window scroll -1",
+                   '\x01f': "/window page_down",
+                   '\x01b': "/window page_up",
+                   '\x01d': "/window scroll_down",
+                   '\x01u': "/window scroll_up",
+                   '\x01e': "/window scroll +1",
+                   '\x01y': "/window scroll -1",
                    'j': "/window scroll +1",
                    'k': "/window scroll -1",
-                   '\x01Wh': "/window left",
-                   '\x01Wj': "/window down",
-                   '\x01Wk': "/window up",
-                   '\x01Wl': "/window right",
-                   '\x01W=': "/window balance",
-                   '\x01Wx': "/window swap",
-                   '\x01Ws': "/window splith",
-                   '\x01Wv': "/window splitv",
-                   '\x01Wq': "/window merge",
+                   '\x01wh': "/window left",
+                   '\x01wj': "/window down",
+                   '\x01wk': "/window up",
+                   '\x01wl': "/window right",
+                   '\x01w=': "/window balance",
+                   '\x01wx': "/window swap",
+                   '\x01ws': "/window splith",
+                   '\x01wv': "/window splitv",
+                   '\x01wq': "/window merge",
                    ';': key_semicolon,
                    ',': key_comma,
                    'u': key_u,
-                   '\x01R': key_ctrl_r}
+                   '\x01r': key_ctrl_r}
 
 # Add alt-j<number> bindings.
 for i in range(10, 99):
@@ -1365,6 +1365,10 @@ class UserMapping(UMParser):
 # Key handling.
 # =============
 
+def normalize_keys(signal_data):
+    """Translate upper case ctrl sequences to lower case ones"""
+    return re.sub("\x01[A-Z]", lambda match: match.group(0).lower(), signal_data)
+
 def cb_key_pressed(data, signal, signal_data):
     """Detect potential Esc presses.
 
@@ -1373,8 +1377,9 @@ def cb_key_pressed(data, signal, signal_data):
     We therefore use a timeout (50ms) to detect whether Alt or Esc was pressed.
     """
     global last_signal_time
+    keys = normalize_keys(signal_data)
     last_signal_time = time.time()
-    if signal_data == "\x01[":
+    if keys == "\x01[":
         # In 50ms, check if any other keys were pressed. If not, it's Esc!
         weechat.hook_timer(50, 0, 1, "cb_check_esc",
                            "{:f}".format(last_signal_time))
@@ -1410,7 +1415,7 @@ def cb_key_combo_default(data, signal, signal_data):
     # If Esc was pressed, strip the Esc part from the pressed keys.
     # Example: user presses Esc followed by i. This is detected as "\x01[i",
     # but we only want to handle "i".
-    keys = signal_data
+    keys = normalize_keys(signal_data)
     if esc_pressed or esc_pressed == -2:
         if keys.startswith("\x01[" * esc_pressed):
             # Multiples of 3 seem to "cancel" themselves,
@@ -1422,8 +1427,8 @@ def cb_key_combo_default(data, signal, signal_data):
                 esc_pressed = 0
         # This can happen if a valid combination is started but interrupted
         # with Esc, such as Ctrl-W→Esc→w which would send two signals:
-        # "\x01W\x01[" then "\x01W\x01[w".
-        # In that case, we still need to handle the next signal ("\x01W\x01[w")
+        # "\x01w\x01[" then "\x01w\x01[w".
+        # In that case, we still need to handle the next signal ("\x01w\x01[w")
         # so we use the special value "-2".
         else:
             esc_pressed = -2
@@ -1434,7 +1439,7 @@ def cb_key_combo_default(data, signal, signal_data):
         return weechat.WEECHAT_RC_OK_EAT
 
     # Clear the undo history for this buffer on <Return>.
-    if keys == "\x01M":
+    if keys == "\x01m":
         buf = weechat.current_buffer()
         clear_undo_history(buf)
 
@@ -1486,7 +1491,7 @@ def cb_key_combo_default(data, signal, signal_data):
         cmd_text = weechat.buffer_get_string(buf, "input")
         weechat.hook_timer(1, 0, 1, "cb_check_cmd_mode", "")
         # Return key.
-        if keys == "\x01M":
+        if keys == "\x01m":
             weechat.hook_timer(1, 0, 1, "cb_exec_cmd", cmd_text)
             if len(cmd_text) > 1 and (not cmd_history or
                                       cmd_history[-1] != cmd_text):
@@ -1515,7 +1520,7 @@ def cb_key_combo_default(data, signal, signal_data):
             weechat.buffer_set(buf, "input", cmd_text)
             set_cur(buf, cmd_text, len(cmd_text), False)
         # Tab key. No completion when searching ("/").
-        elif keys == "\x01I" and cmd_text[0] == ":":
+        elif keys == "\x01i" and cmd_text[0] == ":":
             if cmd_text_orig is None:
                 input_ = list(cmd_text)
                 del input_[0]
@@ -1540,7 +1545,7 @@ def cb_key_combo_default(data, signal, signal_data):
             cmd_text_orig = None
             cmd_compl_pos = 0
         weechat.bar_item_update("cmd_completion")
-        if keys in ["\x01M", "\x01[[A", "\x01[[B"]:
+        if keys in ["\x01m", "\x01[[A", "\x01[[B"]:
             cmd_compl_text = ""
             return weechat.WEECHAT_RC_OK_EAT
         else:
@@ -1608,7 +1613,7 @@ def cb_key_combo_default(data, signal, signal_data):
     # It's a default mapping. If the corresponding value is a string, we assume
     # it's a WeeChat command. Otherwise, it's a method we'll call.
     if vi_keys in VI_KEYS:
-        if vi_keys not in ['u', '\x01R']:
+        if vi_keys not in ['u', '\x01r']:
             add_undo_history(buf, input_line)
         if isinstance(VI_KEYS[vi_keys], str):
             do_command(VI_KEYS[vi_keys], buf, input_line, cur, count)
@@ -1653,22 +1658,23 @@ def cb_check_imap_esc(data, remaining_calls):
 
 def cb_key_combo_search(data, signal, signal_data):
     """Handle keys while search mode is active (if search_vim is enabled)."""
+    keys = normalize_keys(signal_data)
     if not weechat.config_string_to_boolean(vimode_settings['search_vim']):
         return weechat.WEECHAT_RC_OK
     if mode == "COMMAND":
-        if signal_data == "\x01M":
+        if keys == "\x01m":
             set_mode("SEARCH")
             return weechat.WEECHAT_RC_OK_EAT
     elif mode == "SEARCH":
-        if signal_data == "\x01M":
+        if keys == "\x01m":
             set_mode("NORMAL")
         else:
-            if signal_data == "n":
+            if keys == "n":
                 weechat.command("", "/input search_next")
-            elif signal_data == "N":
+            elif keys == "N":
                 weechat.command("", "/input search_previous")
             # Start a new search.
-            elif signal_data == "/":
+            elif keys == "/":
                 weechat.command("", "/input search_stop_here")
                 set_mode("NORMAL")
                 weechat.command("", "/input search_text_here")
@@ -1771,7 +1777,8 @@ def load_user_mappings():
             mappings.update(json.loads(vimode_settings[key]))
         vimode_settings[key] = mappings
         for k, v in mappings.items():
-            VI_KEYS[k] = UserMapping(k, v, noremap=noremap)
+            key = normalize_keys(k)
+            VI_KEYS[key] = UserMapping(key, v, noremap=noremap)
 
 def load_is_keyword_regexes():
     is_keyword = vimode_settings['is_keyword']
