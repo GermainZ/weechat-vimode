@@ -32,7 +32,7 @@ from the AUR.
 
 # Usage:
 To switch to Normal mode, press `Esc` or `Ctrl+Space`. You can also use an
-alternate mapping while in Insert mode, similar to `:image jk <Esc>` in vim.
+alternate mapping while in Insert mode, similar to `:imap jk <Esc>` in vim.
 See the `imap_esc` and `imap_esc_timeout` options for more details.
 
 Three bar items are provided:
@@ -187,9 +187,10 @@ Normal mode. When in search mode, pressing `/` will start a new search.
 * `:qa`, `:qall`, `:quita`, `:quitall`
                     Exits WeeChat (`/exit`)
 * `:w`, `:write`    Saves settings (`/save`)
-* `:bN`, `:bNext`, `:bp`, `:bprevious`
+* `:bp`, `:bprevious`
                     Go to the previous buffer (`/buffer -1`).
-* `:bn`, `:bnext`   Go to the next buffer (`/buffer +1`).
+* `:bn`, `:bnext` `:bN` `:bNext`
+                    Go to the next buffer (`/buffer +1`).
 * `:bd`, `:bdel`, `:bdelete`
                     Close the current buffer (`/close`).
 * `:b#`             Go to the last buffer (`/input jump_last_buffer`).
